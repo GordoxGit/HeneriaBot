@@ -73,6 +73,15 @@ function createTables() {
         value TEXT,
         UNIQUE(guild_id, key)
       )`
+    },
+    {
+      name: 'welcome_config',
+      sql: `CREATE TABLE IF NOT EXISTS welcome_config (
+        guild_id TEXT PRIMARY KEY,
+        channel_id TEXT,
+        message TEXT,
+        enabled INTEGER DEFAULT 1
+      )`
     }
   ];
 
