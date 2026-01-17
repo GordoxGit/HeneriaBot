@@ -5,6 +5,7 @@
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const config = require('./config');
 const logger = require('./utils/logger');
+const db = require('./database/db');
 const loadCommands = require('./handlers/commandHandler');
 const loadEvents = require('./handlers/eventHandler');
 
@@ -27,6 +28,9 @@ client.commands = new Collection();
 async function init() {
   try {
     logger.info('Démarrage du bot Heneria...');
+
+    // Initialisation de la base de données
+    db.init();
 
     // Chargement des handlers
     loadCommands(client);
