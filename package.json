@@ -1,0 +1,28 @@
+{
+  "name": "heneria-bot",
+  "version": "1.0.0",
+  "description": "Bot Discord Heneria",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "lint": "eslint src/**/*.js"
+  },
+  "keywords": [],
+  "author": "Jules",
+  "license": "ISC",
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "canvas": "^2.11.2",
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.14.0",
+    "globals": "^15.11.0",
+    "nodemon": "^3.1.7",
+    "prettier": "^3.3.3"
+  }
+}
