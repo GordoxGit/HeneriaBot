@@ -22,5 +22,6 @@ module.exports = {
   paths: {
     commands: 'src/commands',
     events: 'src/events',
+    database: './data/heneria.db',
   }
 };
