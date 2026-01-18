@@ -11,8 +11,9 @@ const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 /**
  * Met à jour le compteur de membres pour un serveur donné
  * @param {import('discord.js').Guild} guild - Le serveur Discord
+ * @param {boolean} force - Forcer la mise à jour sans respecter le cooldown
  */
-async function updateMemberCounter(guild) {
+async function updateMemberCounter(guild, force = false) {
     try {
         // 1. Récupérer la configuration
         const config = db.get('SELECT * FROM counter_config WHERE guild_id = ?', [guild.id]);
@@ -26,7 +27,7 @@ async function updateMemberCounter(guild) {
         const now = Date.now();
         const lastUpdate = config.last_update || 0;
 
-        if (now - lastUpdate < COOLDOWN_MS) {
+        if (!force && now - lastUpdate < COOLDOWN_MS) {
             logger.info(`⏳ Cooldown actif pour le compteur de ${guild.name} (Dernière MAJ: ${new Date(lastUpdate).toLocaleTimeString()})`);
             return;
         }
