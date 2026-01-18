@@ -82,6 +82,15 @@ function createTables() {
         message TEXT,
         enabled INTEGER DEFAULT 1
       )`
+    },
+    {
+      name: 'counter_config',
+      sql: `CREATE TABLE IF NOT EXISTS counter_config (
+        guild_id TEXT PRIMARY KEY,
+        channel_id TEXT,
+        format TEXT DEFAULT '👥 Membres : {count}',
+        last_update INTEGER DEFAULT 0
+      )`
     }
   ];
 

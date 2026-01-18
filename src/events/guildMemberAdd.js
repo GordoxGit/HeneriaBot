@@ -8,6 +8,7 @@ const logger = require('../utils/logger');
 const { generateWelcomeCard } = require('../utils/welcomeCard');
 const { createEmbed } = require('../utils/embedBuilder');
 const db = require('../database/db');
+const { updateMemberCounter } = require('../utils/memberCounter');
 
 module.exports = {
   name: Events.GuildMemberAdd,
@@ -79,5 +80,8 @@ module.exports = {
       // On loggue aussi l'erreur complète pour le debug
       console.error(error);
     }
+
+    // 5. Mise à jour du compteur de membres
+    await updateMemberCounter(member.guild);
   },
 };
