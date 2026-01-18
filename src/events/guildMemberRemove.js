@@ -1,27 +1,25 @@
 /**
- * Événement GuildMemberRemove
- * Se déclenche lorsqu'un membre quitte le serveur (départ, kick, ban).
+ * Événement guildMemberRemove
+ * Se déclenche lorsqu'un membre quitte le serveur.
  */
-
-const { Events } = require('discord.js');
-const logger = require('../utils/logger');
 const { updateMemberCounter } = require('../utils/memberCounter');
+const logger = require('../utils/logger');
 
 module.exports = {
-  name: Events.GuildMemberRemove,
-  once: false,
+  name: 'guildMemberRemove',
   /**
-   * Exécute l'événement
-   * @param {import('discord.js').GuildMember} member
+   * Exécute la logique de l'événement
+   * @param {import('discord.js').GuildMember} member - Le membre qui a quitté
    */
   async execute(member) {
-    logger.info(`👋 Départ de membre : ${member.user.tag} (ID: ${member.id})`);
-
     try {
-      // Mise à jour du compteur de membres
+      logger.info(`👋 ${member.user.tag} a quitté ${member.guild.name}`);
+
+      // Mettre à jour le compteur
       await updateMemberCounter(member.guild);
+
     } catch (error) {
-      logger.error(`❌ Erreur lors de la mise à jour du compteur (départ) : ${error.message}`);
+      logger.error('Erreur dans guildMemberRemove:', error);
     }
-  },
+  }
 };
