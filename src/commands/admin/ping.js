@@ -9,8 +9,7 @@ const { createEmbed } = require('../../utils/embedBuilder');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('ping')
-    .setDescription('Affiche la latence du bot')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+    .setDescription('Affiche la latence du bot'),
 
   /**
    * Exécute la commande
