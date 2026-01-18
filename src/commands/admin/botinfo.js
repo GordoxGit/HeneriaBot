@@ -3,7 +3,7 @@
  * Affiche les informations sur le bot
  */
 
-const { SlashCommandBuilder, PermissionFlagsBits, version: djsVersion } = require('discord.js');
+const { SlashCommandBuilder, version: djsVersion } = require('discord.js');
 const { createEmbed } = require('../../utils/embedBuilder');
 const { version } = require('../../../package.json');
 const os = require('os');
@@ -11,8 +11,7 @@ const os = require('os');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('botinfo')
-    .setDescription('Affiche les informations sur le bot')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+    .setDescription('Affiche les informations sur le bot'),
 
   /**
    * Exécute la commande
@@ -35,10 +34,11 @@ module.exports = {
 
     const embed = createEmbed()
       .setTitle('ℹ️ Informations du Bot')
+      .setThumbnail(client.user.displayAvatarURL())
       .addFields(
         { name: 'Identité', value: `**Nom:** ${client.user.username}\n**Tag:** ${client.user.tag}\n**ID:** ${client.user.id}`, inline: true },
         { name: 'Technique', value: `**Version:** v${version}\n**Discord.js:** v${djsVersion}\n**Node.js:** ${process.version}`, inline: true },
-        { name: 'Statistiques', value: `**Serveurs:** ${client.guilds.cache.size}\n**Utilisateurs:** ${totalMembers}\n**Uptime:** ${uptimeString}`, inline: false },
+        { name: 'Statistiques', value: `**Serveurs:** ${client.guilds.cache.size}\n**Utilisateurs:** ${totalMembers}\n**Commandes:** ${client.commands.size}\n**Uptime:** ${uptimeString}`, inline: false },
         { name: 'Système', value: `**Plateforme:** ${os.platform()} (${os.release()})\n**Mémoire:** ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)} MB`, inline: true }
       );
 
