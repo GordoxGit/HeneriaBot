@@ -91,6 +91,44 @@ function createTables() {
         format TEXT DEFAULT '👥 Membres : {count}',
         last_update INTEGER DEFAULT 0
       )`
+    },
+    {
+      name: 'tickets',
+      sql: `CREATE TABLE IF NOT EXISTS tickets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        staff_id TEXT,
+        channel_id TEXT NOT NULL,
+        category TEXT NOT NULL,
+        status TEXT DEFAULT 'open',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        closed_at DATETIME,
+        close_reason TEXT
+      )`
+    },
+    {
+      name: 'ticket_categories',
+      sql: `CREATE TABLE IF NOT EXISTS ticket_categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        category_id TEXT NOT NULL,
+        emoji TEXT,
+        label TEXT NOT NULL,
+        type TEXT NOT NULL,
+        enabled INTEGER DEFAULT 1
+      )`
+    },
+    {
+      name: 'ticket_config',
+      sql: `CREATE TABLE IF NOT EXISTS ticket_config (
+        guild_id TEXT PRIMARY KEY,
+        panel_channel_id TEXT,
+        panel_message_id TEXT,
+        staff_channel_id TEXT,
+        log_channel_id TEXT,
+        staff_role_id TEXT
+      )`
     }
   ];
 
@@ -100,6 +138,31 @@ function createTables() {
       logger.info(`Table '${schema.name}' vérifiée/créée`);
     } catch (error) {
       logger.error(`Erreur création table ${schema.name}: ${error.message}`);
+    }
+  }
+
+  // Création des index pour l'optimisation
+  const indexes = [
+    {
+      name: 'idx_tickets_guild',
+      sql: `CREATE INDEX IF NOT EXISTS idx_tickets_guild ON tickets(guild_id)`
+    },
+    {
+      name: 'idx_tickets_user',
+      sql: `CREATE INDEX IF NOT EXISTS idx_tickets_user ON tickets(user_id)`
+    },
+    {
+      name: 'idx_tickets_status',
+      sql: `CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status)`
+    }
+  ];
+
+  for (const index of indexes) {
+    try {
+      db.prepare(index.sql).run();
+      logger.info(`Index '${index.name}' vérifié/créé`);
+    } catch (error) {
+      logger.error(`Erreur création index ${index.name}: ${error.message}`);
     }
   }
 }
