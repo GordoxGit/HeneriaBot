@@ -14,6 +14,20 @@ module.exports = {
    * @param {import('discord.js').Interaction} interaction
    */
   async execute(interaction) {
+    // Gestion des boutons
+    if (interaction.isButton()) {
+      if (interaction.customId.startsWith('ticket_')) {
+        logger.info(`Bouton ${interaction.customId} cliqué par ${interaction.user.tag}`);
+        // Pour l'instant, on ne fait que logger l'interaction
+        // On répond pour éviter l'erreur "L'interaction a échoué"
+        await interaction.reply({
+          content: 'Votre demande a été prise en compte (Mode test)',
+          ephemeral: true
+        });
+        return;
+      }
+    }
+
     // On ne traite que les commandes slash (ChatInputCommand)
     if (!interaction.isChatInputCommand()) return;
 
