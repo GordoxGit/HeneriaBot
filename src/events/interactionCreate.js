@@ -5,6 +5,7 @@
 
 const { Events } = require('discord.js');
 const { errorEmbed } = require('../utils/embedBuilder');
+const { createTicket } = require('../utils/ticketManager');
 const logger = require('../utils/logger');
 
 module.exports = {
@@ -17,14 +18,17 @@ module.exports = {
     // Gestion des boutons
     if (interaction.isButton()) {
       if (interaction.customId.startsWith('ticket_')) {
-        logger.info(`Bouton ${interaction.customId} cliqué par ${interaction.user.tag}`);
-        // Pour l'instant, on ne fait que logger l'interaction
-        // On répond pour éviter l'erreur "L'interaction a échoué"
-        await interaction.reply({
-          content: 'Votre demande a été prise en compte (Mode test)',
-          ephemeral: true
-        });
-        return;
+        const [prefix, type] = interaction.customId.split('_');
+
+        // Gestion de la création de tickets
+        if (['help', 'report', 'partnership', 'bug'].includes(type)) {
+          await createTicket(interaction, type);
+          return;
+        }
+
+        // Les autres boutons (close, claim) seront gérés par un autre handler
+        // Pour l'instant on ne fait rien ou on log
+        logger.info(`Bouton ${interaction.customId} cliqué par ${interaction.user.tag} (Non géré par ce handler)`);
       }
     }
 
