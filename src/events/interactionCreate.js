@@ -5,7 +5,13 @@
 
 const { Events } = require('discord.js');
 const { errorEmbed } = require('../utils/embedBuilder');
-const { createTicket } = require('../utils/ticketManager');
+const {
+  createTicket,
+  claimTicket,
+  closeTicket,
+  confirmCloseTicket,
+  cancelCloseTicket
+} = require('../utils/ticketManager');
 const logger = require('../utils/logger');
 
 module.exports = {
@@ -18,16 +24,43 @@ module.exports = {
     // Gestion des boutons
     if (interaction.isButton()) {
       if (interaction.customId.startsWith('ticket_')) {
-        const [prefix, type] = interaction.customId.split('_');
+        const parts = interaction.customId.split('_');
+        const action = parts[1];
 
         // Gestion de la création de tickets
-        if (['help', 'report', 'partnership', 'bug'].includes(type)) {
-          await createTicket(interaction, type);
+        if (['help', 'report', 'partnership', 'bug'].includes(action)) {
+          await createTicket(interaction, action);
           return;
         }
 
-        // Les autres boutons (close, claim) seront gérés par un autre handler
-        // Pour l'instant on ne fait rien ou on log
+        // Gestion de la prise en charge (Claim)
+        if (action === 'claim') {
+            const ticketId = parts[2];
+            await claimTicket(interaction, ticketId);
+            return;
+        }
+
+        // Gestion de la demande de fermeture
+        if (action === 'close') {
+            const ticketId = parts[2] || null;
+            await closeTicket(interaction, ticketId);
+            return;
+        }
+
+        // Confirmation de fermeture
+        if (action === 'confirm' && parts[2] === 'close') {
+            const ticketId = parts[3];
+            await confirmCloseTicket(interaction, ticketId);
+            return;
+        }
+
+        // Annulation de fermeture
+        if (action === 'cancel' && parts[2] === 'close') {
+            await cancelCloseTicket(interaction);
+            return;
+        }
+
+        // Les autres boutons seront gérés ici ou loggés
         logger.info(`Bouton ${interaction.customId} cliqué par ${interaction.user.tag} (Non géré par ce handler)`);
       }
     }

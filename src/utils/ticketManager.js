@@ -8,7 +8,8 @@ const {
   PermissionFlagsBits,
   ActionRowBuilder,
   ButtonBuilder,
-  ButtonStyle
+  ButtonStyle,
+  EmbedBuilder
 } = require('discord.js');
 const db = require('../database/db');
 const { createEmbed, errorEmbed } = require('./embedBuilder');
@@ -151,7 +152,7 @@ Un membre du staff va vous répondre dès que possible.
           .setStyle(ButtonStyle.Danger)
       );
 
-    const ticketMessage = await ticketChannel.send({
+    await ticketChannel.send({
       content: `${member} ${staffRoleId ? `<@&${staffRoleId}>` : ''}`,
       embeds: [embed],
       components: [row]
@@ -226,4 +227,228 @@ Un membre du staff va vous répondre dès que possible.
   }
 }
 
-module.exports = { createTicket };
+/**
+ * Gère la prise en charge d'un ticket par un staff
+ * @param {import('discord.js').ButtonInteraction} interaction
+ * @param {string} ticketId - L'ID du ticket en base de données
+ */
+async function claimTicket(interaction, ticketId) {
+  const { guild, member, user } = interaction;
+
+  try {
+    // 1. Vérifier si l'utilisateur est staff
+    const ticketConfig = db.get('SELECT staff_role_id FROM ticket_config WHERE guild_id = ?', [guild.id]);
+    if (!ticketConfig || !ticketConfig.staff_role_id) {
+       return interaction.reply({
+         content: '❌ La configuration des tickets est incomplète (rôle staff manquant).',
+         ephemeral: true
+       });
+    }
+
+    if (!member.roles.cache.has(ticketConfig.staff_role_id)) {
+      return interaction.reply({
+        content: '❌ Vous n\'avez pas la permission de prendre en charge ce ticket.',
+        ephemeral: true
+      });
+    }
+
+    // 2. Récupérer le ticket
+    const ticket = db.get('SELECT * FROM tickets WHERE id = ?', [ticketId]);
+    if (!ticket) {
+      return interaction.reply({
+        content: '❌ Ce ticket n\'existe plus.',
+        ephemeral: true
+      });
+    }
+
+    if (ticket.status === 'claimed') {
+      return interaction.reply({
+        content: `❌ Ce ticket est déjà pris en charge par <@${ticket.staff_id}>.`,
+        ephemeral: true
+      });
+    }
+
+    if (ticket.status === 'closed') {
+        return interaction.reply({
+            content: '❌ Ce ticket est fermé.',
+            ephemeral: true
+        });
+    }
+
+    await interaction.deferReply({ ephemeral: true });
+
+    // 3. Mettre à jour la BDD
+    db.run('UPDATE tickets SET staff_id = ?, status = ? WHERE id = ?', [user.id, 'claimed', ticketId]);
+
+    // 4. Message dans le ticket
+    const ticketChannel = guild.channels.cache.get(ticket.channel_id);
+    if (ticketChannel) {
+        // Ajouter les perms au staff s'il ne les a pas déjà via le rôle (par sécurité)
+        // Mais normalement le rôle staff a déjà les perms
+
+        const claimEmbed = createEmbed()
+            .setTitle('✅ Ticket pris en charge')
+            .setDescription(`${member} prend en charge ce ticket.`)
+            .setColor(0x00ff00);
+
+        await ticketChannel.send({ embeds: [claimEmbed] });
+    }
+
+    // 5. Mettre à jour la notification staff
+    // On doit recréer l'embed original mais avec le champ "Staff assigné"
+    // interaction.message est le message dans le salon staff
+    const oldEmbed = interaction.message.embeds[0];
+
+    // Recréation propre
+    const newStaffEmbed = EmbedBuilder.from(oldEmbed);
+
+    newStaffEmbed.addFields({ name: '👮 Staff assigné', value: `${member}`, inline: true });
+    newStaffEmbed.setColor(0x00ff00); // Vert pour dire pris en charge
+
+    // On garde le bouton fermer, mais on enlève claim
+    const newRow = new ActionRowBuilder()
+        .addComponents(
+             new ButtonBuilder()
+              .setCustomId(`ticket_close_${ticketId}`)
+              .setLabel('Fermer')
+              .setEmoji('🔒')
+              .setStyle(ButtonStyle.Danger)
+        );
+
+    await interaction.message.edit({ embeds: [newStaffEmbed], components: [newRow] });
+
+    // 6. Réponse éphémère
+    await interaction.editReply({ content: '✅ Vous avez pris en charge ce ticket.' });
+    logger.info(`Ticket #${ticketId} pris en charge par ${user.tag}`);
+
+  } catch (error) {
+    logger.error(`Erreur claimTicket: ${error}`);
+    // Si deferred
+    if (interaction.deferred) await interaction.editReply({ content: '❌ Une erreur est survenue.' });
+    else await interaction.reply({ content: '❌ Une erreur est survenue.', ephemeral: true });
+  }
+}
+
+/**
+ * Demande confirmation pour fermer un ticket
+ * @param {import('discord.js').ButtonInteraction} interaction
+ * @param {string|null} ticketId - ID du ticket (null si cliqué depuis le salon du ticket)
+ */
+async function closeTicket(interaction, ticketId) {
+    const { guild, user, member, channel } = interaction;
+
+    try {
+        let ticket;
+
+        // Si ticketId est fourni (depuis panel staff)
+        if (ticketId) {
+            ticket = db.get('SELECT * FROM tickets WHERE id = ?', [ticketId]);
+        } else {
+            // Sinon on cherche via le channel_id
+            ticket = db.get('SELECT * FROM tickets WHERE channel_id = ?', [channel.id]);
+        }
+
+        if (!ticket) {
+            return interaction.reply({ content: '❌ Impossible de trouver le ticket associé.', ephemeral: true });
+        }
+
+        // Vérification des permissions (Créateur ou Staff)
+        const ticketConfig = db.get('SELECT staff_role_id FROM ticket_config WHERE guild_id = ?', [guild.id]);
+        const isStaff = ticketConfig && member.roles.cache.has(ticketConfig.staff_role_id);
+        const isCreator = user.id === ticket.user_id;
+
+        if (!isStaff && !isCreator) {
+             return interaction.reply({ content: '❌ Vous n\'avez pas la permission de fermer ce ticket.', ephemeral: true });
+        }
+
+        // Envoyer le message de confirmation
+        const row = new ActionRowBuilder()
+          .addComponents(
+            new ButtonBuilder()
+              .setCustomId(`ticket_confirm_close_${ticket.id}`)
+              .setLabel('Confirmer')
+              .setStyle(ButtonStyle.Danger),
+
+            new ButtonBuilder()
+              .setCustomId('ticket_cancel_close')
+              .setLabel('Annuler')
+              .setStyle(ButtonStyle.Secondary)
+          );
+
+        await interaction.reply({
+            content: '❓ Êtes-vous sûr de vouloir fermer ce ticket ?',
+            components: [row],
+            ephemeral: false // Visible publiquement pour le contexte
+        });
+
+    } catch (error) {
+        logger.error(`Erreur closeTicket: ${error}`);
+        if (!interaction.replied) await interaction.reply({ content: '❌ Erreur.', ephemeral: true });
+    }
+}
+
+/**
+ * Confirme la fermeture du ticket
+ * @param {import('discord.js').ButtonInteraction} interaction
+ * @param {string} ticketId
+ */
+async function confirmCloseTicket(interaction, ticketId) {
+    const { guild, user } = interaction;
+
+    try {
+        const ticket = db.get('SELECT * FROM tickets WHERE id = ?', [ticketId]);
+        if (!ticket) {
+             return interaction.reply({ content: '❌ Ticket introuvable.', ephemeral: true });
+        }
+
+        if (ticket.status === 'closed') {
+             return interaction.reply({ content: '❌ Ce ticket est déjà fermé.', ephemeral: true });
+        }
+
+        await interaction.deferUpdate(); // Acknowledge button click
+
+        // Update DB
+        db.run('UPDATE tickets SET status = ?, closed_at = CURRENT_TIMESTAMP WHERE id = ?', ['closed', ticketId]);
+
+        // Message in ticket channel
+        const ticketChannel = guild.channels.cache.get(ticket.channel_id);
+        if (ticketChannel) {
+             const closeEmbed = createEmbed()
+                .setTitle('🔒 Ticket fermé')
+                .setDescription(`Ce ticket a été fermé par ${interaction.member}.
+Le salon sera supprimé dans 10 secondes.`)
+                .setColor(0xff0000);
+
+             await ticketChannel.send({ embeds: [closeEmbed] });
+
+             // Schedule delete
+             setTimeout(() => {
+                 ticketChannel.delete('Ticket fermé').catch(e => logger.warn(`Impossible de supprimer le salon ${ticket.channel_id}: ${e.message}`));
+             }, 10000);
+        }
+
+        // Update interaction message
+        await interaction.editReply({ content: '🔒 Fermeture confirmée.', components: [] });
+
+        logger.info(`Ticket #${ticketId} fermé par ${user.tag}`);
+
+    } catch (error) {
+        logger.error(`Erreur confirmCloseTicket: ${error}`);
+    }
+}
+
+/**
+ * Annule la fermeture du ticket
+ * @param {import('discord.js').ButtonInteraction} interaction
+ */
+async function cancelCloseTicket(interaction) {
+    await interaction.update({ content: '❌ Fermeture annulée.', components: [] });
+}
+
+module.exports = {
+    createTicket,
+    claimTicket,
+    closeTicket,
+    confirmCloseTicket,
+    cancelCloseTicket
+};
