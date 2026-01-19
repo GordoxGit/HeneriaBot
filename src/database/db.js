@@ -35,6 +35,9 @@ function init() {
     // Création des tables
     createTables();
 
+    // Initialisation des sites de vote par défaut
+    initVoteSites();
+
   } catch (error) {
     logger.error(`Erreur lors de l'initialisation de la base de données : ${error.message}`);
     throw error;
@@ -129,6 +132,38 @@ function createTables() {
         log_channel_id TEXT,
         staff_role_id TEXT
       )`
+    },
+    {
+      name: 'vote_sites',
+      sql: `CREATE TABLE IF NOT EXISTS vote_sites (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        url TEXT NOT NULL,
+        enabled INTEGER DEFAULT 1,
+        position INTEGER DEFAULT 0
+      )`
+    },
+    {
+      name: 'user_votes',
+      sql: `CREATE TABLE IF NOT EXISTS user_votes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        site_id INTEGER NOT NULL,
+        voted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        reward_claimed INTEGER DEFAULT 0
+      )`
+    },
+    {
+      name: 'vote_rewards',
+      sql: `CREATE TABLE IF NOT EXISTS vote_rewards (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT UNIQUE,
+        currency_amount INTEGER DEFAULT 0,
+        xp_amount INTEGER DEFAULT 0,
+        role_id TEXT
+      )`
     }
   ];
 
@@ -154,6 +189,18 @@ function createTables() {
     {
       name: 'idx_tickets_status',
       sql: `CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status)`
+    },
+    {
+      name: 'idx_user_votes_user',
+      sql: `CREATE INDEX IF NOT EXISTS idx_user_votes_user ON user_votes(user_id)`
+    },
+    {
+      name: 'idx_user_votes_site',
+      sql: `CREATE INDEX IF NOT EXISTS idx_user_votes_site ON user_votes(site_id)`
+    },
+    {
+      name: 'idx_vote_sites_guild',
+      sql: `CREATE INDEX IF NOT EXISTS idx_vote_sites_guild ON vote_sites(guild_id)`
     }
   ];
 
@@ -164,6 +211,44 @@ function createTables() {
     } catch (error) {
       logger.error(`Erreur création index ${index.name}: ${error.message}`);
     }
+  }
+}
+
+/**
+ * Initialise les sites de vote par défaut s'ils n'existent pas
+ */
+function initVoteSites() {
+  const guildId = config.guildId;
+
+  if (!guildId) {
+    logger.warn('GUILD_ID non configuré, impossible d\'initialiser les sites de vote par défaut');
+    return;
+  }
+
+  try {
+    const existingSites = db.prepare('SELECT count(*) as count FROM vote_sites WHERE guild_id = ?').get(guildId);
+
+    if (existingSites.count === 0) {
+      const defaultSites = [
+        { name: 'Hytale Game Serveurs', url: 'https://hytale.game/serveurs/?sid=heneria', position: 1 },
+        { name: 'Hytale-Servs', url: 'https://hytale-servs.fr/servers/heneria', position: 2 },
+        { name: 'Top-Serveurs Hytale', url: 'https://top-serveurs.net/hytale/heneria', position: 3 },
+        { name: 'Serveur-Prive Hytale', url: 'https://serveur-prive.net/hytale/heneria', position: 4 }
+      ];
+
+      const insert = db.prepare('INSERT INTO vote_sites (guild_id, name, url, position) VALUES (?, ?, ?, ?)');
+
+      const transaction = db.transaction((sites) => {
+        for (const site of sites) {
+          insert.run(guildId, site.name, site.url, site.position);
+        }
+      });
+
+      transaction(defaultSites);
+      logger.success('Sites de vote par défaut initialisés');
+    }
+  } catch (error) {
+    logger.error(`Erreur lors de l'initialisation des sites de vote : ${error.message}`);
   }
 }
 
