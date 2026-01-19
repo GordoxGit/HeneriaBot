@@ -160,6 +160,7 @@ function createTables() {
         verified BOOLEAN DEFAULT 1,
         verification_method TEXT DEFAULT 'webhook',
         verified_by TEXT,
+        external_vote_id TEXT,
         UNIQUE(user_id, guild_id, site_name, voted_at)
       )`
     },
@@ -213,6 +214,10 @@ function createTables() {
       sql: `CREATE INDEX IF NOT EXISTS idx_user_votes_lookup ON user_votes(user_id, guild_id, site_name, voted_at)`
     },
     {
+      name: 'idx_external_vote_id',
+      sql: `CREATE INDEX IF NOT EXISTS idx_external_vote_id ON user_votes(external_vote_id)`
+    },
+    {
       name: 'idx_vote_sites_guild',
       sql: `CREATE INDEX IF NOT EXISTS idx_vote_sites_guild ON vote_sites(guild_id)`
     }
@@ -246,6 +251,7 @@ function migrateTables() {
     // Migration user_votes
     const userVotesInfo = db.prepare('PRAGMA table_info(user_votes)').all();
     const hasSiteId = userVotesInfo.some(col => col.name === 'site_id');
+    const hasExternalVoteId = userVotesInfo.some(col => col.name === 'external_vote_id');
 
     if (hasSiteId) {
       // Old schema detected
@@ -262,10 +268,15 @@ function migrateTables() {
         verified BOOLEAN DEFAULT 1,
         verification_method TEXT DEFAULT 'webhook',
         verified_by TEXT,
+        external_vote_id TEXT,
         UNIQUE(user_id, guild_id, site_name, voted_at)
       )`).run();
 
       logger.info('Table user_votes migrée (ancienne sauvegardée en user_votes_old)');
+    } else if (!hasExternalVoteId) {
+      db.prepare('ALTER TABLE user_votes ADD COLUMN external_vote_id TEXT').run();
+      db.prepare('CREATE INDEX IF NOT EXISTS idx_external_vote_id ON user_votes(external_vote_id)').run();
+      logger.info('Colonne external_vote_id ajoutée à user_votes');
     }
   } catch (error) {
     logger.error(`Erreur migration : ${error.message}`);

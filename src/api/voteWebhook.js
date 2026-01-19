@@ -57,9 +57,9 @@ function parseVoteData(body, siteName) {
         timestamp: Date.now()
     }),
     'serveur-prive.net': (data) => ({
-        userId: data.id_user || data.custom,
+        userId: data.user_id || data.id_user || data.custom || data.discord_id,
         siteName: 'serveur-prive.net',
-        timestamp: Date.now()
+        timestamp: data.timestamp ? new Date(data.timestamp).getTime() : Date.now()
     })
   };
 

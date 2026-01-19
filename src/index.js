@@ -48,6 +48,15 @@ async function init() {
     const voteHandler = require('./handlers/voteHandler');
     voteHandler.init(client);
 
+    // Services de polling
+    const hytaleGamePoller = require('./services/hytaleGamePoller');
+    const serveurPrivePoller = require('./services/serveurPrivePoller');
+
+    client.once('ready', () => {
+      hytaleGamePoller.start();
+      serveurPrivePoller.start();
+    });
+
     const express = require('express');
     const app = express();
     const voteRouter = require('./api/voteWebhook');
@@ -75,6 +84,14 @@ process.on('uncaughtException', (error) => {
   logger.error(`Exception non gérée : ${error.message}`);
   // En production, on pourrait envisager de redémarrer le processus proprement
   process.exit(1);
+});
+
+process.on('SIGINT', () => {
+  logger.info('Arrêt du bot...');
+  require('./services/hytaleGamePoller').stop();
+  require('./services/serveurPrivePoller').stop();
+  db.close();
+  process.exit(0);
 });
 
 // Lancement
