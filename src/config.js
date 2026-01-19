@@ -10,6 +10,7 @@ module.exports = {
   clientId: process.env.CLIENT_ID,
   guildId: process.env.GUILD_ID,
   environment: process.env.ENVIRONMENT || 'development',
+  apiPort: process.env.API_PORT || 3000,
 
   // Couleurs Heneria
   colors: {

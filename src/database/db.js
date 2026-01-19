@@ -35,6 +35,9 @@ function init() {
     // Création des tables
     createTables();
 
+    // Migration des tables si nécessaire
+    migrateTables();
+
     // Initialisation des sites de vote par défaut
     initVoteSites();
 
@@ -141,18 +144,33 @@ function createTables() {
         name TEXT NOT NULL,
         url TEXT NOT NULL,
         enabled INTEGER DEFAULT 1,
-        position INTEGER DEFAULT 0
+        position INTEGER DEFAULT 0,
+        reward_xp INTEGER DEFAULT 0,
+        reward_money INTEGER DEFAULT 0
       )`
     },
     {
       name: 'user_votes',
       sql: `CREATE TABLE IF NOT EXISTS user_votes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        guild_id TEXT NOT NULL,
         user_id TEXT NOT NULL,
-        site_id INTEGER NOT NULL,
-        voted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        reward_claimed INTEGER DEFAULT 0
+        guild_id TEXT NOT NULL,
+        site_name TEXT NOT NULL,
+        voted_at INTEGER NOT NULL,
+        verified BOOLEAN DEFAULT 1,
+        verification_method TEXT DEFAULT 'webhook',
+        verified_by TEXT,
+        UNIQUE(user_id, guild_id, site_name, voted_at)
+      )`
+    },
+    {
+      name: 'vote_stats',
+      sql: `CREATE TABLE IF NOT EXISTS vote_stats (
+        user_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        total_votes INTEGER DEFAULT 0,
+        last_vote INTEGER,
+        PRIMARY KEY (user_id, guild_id)
       )`
     },
     {
@@ -191,12 +209,8 @@ function createTables() {
       sql: `CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status)`
     },
     {
-      name: 'idx_user_votes_user',
-      sql: `CREATE INDEX IF NOT EXISTS idx_user_votes_user ON user_votes(user_id)`
-    },
-    {
-      name: 'idx_user_votes_site',
-      sql: `CREATE INDEX IF NOT EXISTS idx_user_votes_site ON user_votes(site_id)`
+      name: 'idx_user_votes_lookup',
+      sql: `CREATE INDEX IF NOT EXISTS idx_user_votes_lookup ON user_votes(user_id, guild_id, site_name, voted_at)`
     },
     {
       name: 'idx_vote_sites_guild',
@@ -211,6 +225,50 @@ function createTables() {
     } catch (error) {
       logger.error(`Erreur création index ${index.name}: ${error.message}`);
     }
+  }
+}
+
+/**
+ * Migre les tables existantes vers le nouveau schéma si nécessaire
+ */
+function migrateTables() {
+  try {
+    // Migration vote_sites
+    const voteSitesInfo = db.prepare('PRAGMA table_info(vote_sites)').all();
+    const hasRewardXp = voteSitesInfo.some(col => col.name === 'reward_xp');
+
+    if (!hasRewardXp) {
+      db.prepare('ALTER TABLE vote_sites ADD COLUMN reward_xp INTEGER DEFAULT 0').run();
+      db.prepare('ALTER TABLE vote_sites ADD COLUMN reward_money INTEGER DEFAULT 0').run();
+      logger.info('Colonnes reward ajoutées à vote_sites');
+    }
+
+    // Migration user_votes
+    const userVotesInfo = db.prepare('PRAGMA table_info(user_votes)').all();
+    const hasSiteId = userVotesInfo.some(col => col.name === 'site_id');
+
+    if (hasSiteId) {
+      // Old schema detected
+      logger.info('Migration de la table user_votes...');
+      db.prepare('ALTER TABLE user_votes RENAME TO user_votes_old').run();
+
+      // Recreate table with new schema
+      db.prepare(`CREATE TABLE user_votes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        site_name TEXT NOT NULL,
+        voted_at INTEGER NOT NULL,
+        verified BOOLEAN DEFAULT 1,
+        verification_method TEXT DEFAULT 'webhook',
+        verified_by TEXT,
+        UNIQUE(user_id, guild_id, site_name, voted_at)
+      )`).run();
+
+      logger.info('Table user_votes migrée (ancienne sauvegardée en user_votes_old)');
+    }
+  } catch (error) {
+    logger.error(`Erreur migration : ${error.message}`);
   }
 }
 
