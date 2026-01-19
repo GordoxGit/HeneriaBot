@@ -44,6 +44,22 @@ async function init() {
     // Connexion à Discord
     await client.login(config.token);
 
+    // Initialisation du système de votes (API + Handler)
+    const voteHandler = require('./handlers/voteHandler');
+    voteHandler.init(client);
+
+    const express = require('express');
+    const app = express();
+    const voteRouter = require('./api/voteWebhook');
+
+    app.use(express.json());
+    app.use('/api', voteRouter);
+
+    const apiPort = config.apiPort || 3000;
+    app.listen(apiPort, () => {
+      logger.success(`Serveur API démarré sur le port ${apiPort}`);
+    });
+
   } catch (error) {
     logger.error(`Erreur fatale lors du démarrage : ${error.message}`);
     process.exit(1);
