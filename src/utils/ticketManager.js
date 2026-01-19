@@ -9,11 +9,13 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  EmbedBuilder
+  EmbedBuilder,
+  AttachmentBuilder
 } = require('discord.js');
 const db = require('../database/db');
 const { createEmbed, errorEmbed } = require('./embedBuilder');
 const logger = require('./logger');
+const { generateTranscript } = require('./transcriptGenerator');
 
 /**
  * Crée un nouveau ticket pour un utilisateur
@@ -413,6 +415,46 @@ async function confirmCloseTicket(interaction, ticketId) {
         // Message in ticket channel
         const ticketChannel = guild.channels.cache.get(ticket.channel_id);
         if (ticketChannel) {
+             // Génération et envoi du transcript
+             try {
+                const htmlBuffer = await generateTranscript(ticketChannel, ticket, guild);
+                const ticketConfig = db.get('SELECT log_channel_id FROM ticket_config WHERE guild_id = ?', [guild.id]);
+
+                if (ticketConfig && ticketConfig.log_channel_id) {
+                    const logChannel = guild.channels.cache.get(ticketConfig.log_channel_id);
+                    if (logChannel) {
+                        const creator = await guild.members.fetch(ticket.user_id).catch(() => null);
+                        const staff = ticket.staff_id ? await guild.members.fetch(ticket.staff_id).catch(() => null) : null;
+
+                        const logEmbed = new EmbedBuilder()
+                            .setColor(0x780CED)
+                            .setTitle('📋 Transcript de Ticket')
+                            .addFields(
+                                { name: '🎫 Ticket', value: `#${ticket.id.toString().padStart(4, '0')}`, inline: true },
+                                { name: '👤 Créateur', value: creator ? creator.user.tag : 'Inconnu', inline: true },
+                                { name: '📝 Type', value: ticket.category || 'Inconnu', inline: true },
+                                { name: '✅ Staff', value: staff ? staff.user.tag : 'Non assigné', inline: true },
+                                { name: '📅 Créé le', value: `<t:${Math.floor(new Date(ticket.created_at).getTime() / 1000)}:F>`, inline: true },
+                                { name: '🔒 Fermé le', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true },
+                                { name: '📄 Raison', value: 'Fermé par le staff ou l\'utilisateur', inline: false }
+                            )
+                            .setTimestamp();
+
+                        const attachment = new AttachmentBuilder(htmlBuffer, {
+                            name: `transcript-ticket-${ticket.id}-${Date.now()}.html`
+                        });
+
+                        await logChannel.send({
+                            embeds: [logEmbed],
+                            files: [attachment]
+                        });
+                        logger.info(`Transcript ticket #${ticket.id} envoyé dans ${logChannel.name}`);
+                    }
+                }
+             } catch (err) {
+                 logger.error(`Erreur lors de l'envoi du transcript : ${err}`);
+             }
+
              const closeEmbed = createEmbed()
                 .setTitle('🔒 Ticket fermé')
                 .setDescription(`Ce ticket a été fermé par ${interaction.member}.

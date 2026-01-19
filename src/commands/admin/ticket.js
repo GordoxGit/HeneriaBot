@@ -11,7 +11,7 @@ const logger = require('../../utils/logger');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('ticket')
-    .setDescription('Configuration du système de tickets')
+    .setDescription('Configuration et gestion du système de tickets')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addSubcommand(subcommand =>
       subcommand
@@ -56,6 +56,26 @@ module.exports = {
             .setDescription('Catégorie pour tickets Bug Bot')
             .addChannelTypes(ChannelType.GuildCategory)
             .setRequired(true))
+    )
+    .addSubcommand(subcommand =>
+      subcommand.setName('add')
+        .setDescription('Ajouter un utilisateur au ticket')
+        .addUserOption(option => option.setName('user').setDescription('L\'utilisateur à ajouter').setRequired(true))
+    )
+    .addSubcommand(subcommand =>
+      subcommand.setName('remove')
+        .setDescription('Retirer un utilisateur du ticket')
+        .addUserOption(option => option.setName('user').setDescription('L\'utilisateur à retirer').setRequired(true))
+    )
+    .addSubcommand(subcommand =>
+      subcommand.setName('rename')
+        .setDescription('Renommer le ticket')
+        .addStringOption(option => option.setName('name').setDescription('Nouveau nom').setRequired(true))
+    )
+    .addSubcommand(subcommand =>
+      subcommand.setName('transfer')
+        .setDescription('Transférer le ticket à un autre staff')
+        .addUserOption(option => option.setName('staff').setDescription('Nouveau staff responsable').setRequired(true))
     ),
 
   /**
@@ -63,8 +83,175 @@ module.exports = {
    * @param {import('discord.js').ChatInputCommandInteraction} interaction
    */
   async execute(interaction) {
-    if (interaction.options.getSubcommand() === 'setup') {
-      await this.handleSetup(interaction);
+    const subcommand = interaction.options.getSubcommand();
+
+    switch (subcommand) {
+      case 'setup': return this.handleSetup(interaction);
+      case 'add': return this.handleAdd(interaction);
+      case 'remove': return this.handleRemove(interaction);
+      case 'rename': return this.handleRename(interaction);
+      case 'transfer': return this.handleTransfer(interaction);
+    }
+  },
+
+  /**
+   * Vérifie si l'interaction a lieu dans un ticket et si l'utilisateur est staff
+   */
+  async checkTicketAndStaff(interaction) {
+    const { guild, channel, member } = interaction;
+
+    // 1. Vérifier si on est dans un ticket
+    const ticket = db.get('SELECT * FROM tickets WHERE channel_id = ?', [channel.id]);
+    if (!ticket) {
+      await interaction.reply({
+        embeds: [errorEmbed('Cette commande ne peut être utilisée que dans un salon de ticket.')],
+        ephemeral: true
+      });
+      return null;
+    }
+
+    if (ticket.status === 'closed') {
+      await interaction.reply({
+        embeds: [errorEmbed('Ce ticket est déjà fermé.')],
+        ephemeral: true
+      });
+      return null;
+    }
+
+    // 2. Vérifier si l'utilisateur est staff
+    const config = db.get('SELECT staff_role_id FROM ticket_config WHERE guild_id = ?', [guild.id]);
+
+    // Si l'utilisateur a la perm Admin, on laisse passer, sinon on vérifie le rôle staff
+    const isAdmin = member.permissions.has(PermissionFlagsBits.Administrator);
+    const isStaff = config && member.roles.cache.has(config.staff_role_id);
+
+    if (!isAdmin && !isStaff) {
+      await interaction.reply({
+        embeds: [errorEmbed('Vous n\'avez pas la permission de gérer ce ticket.')],
+        ephemeral: true
+      });
+      return null;
+    }
+
+    return { ticket, config }; // Retourne aussi la config pour usage ultérieur
+  },
+
+  /**
+   * Ajoute un utilisateur au ticket
+   */
+  async handleAdd(interaction) {
+    const context = await this.checkTicketAndStaff(interaction);
+    if (!context) return;
+
+    const targetUser = interaction.options.getUser('user');
+
+    try {
+      await interaction.channel.permissionOverwrites.create(targetUser, {
+        ViewChannel: true,
+        SendMessages: true,
+        ReadMessageHistory: true,
+        AttachFiles: true
+      });
+
+      await interaction.reply({ embeds: [successEmbed(`${targetUser} a été ajouté au ticket.`)] });
+    } catch (error) {
+      logger.error(`Erreur handleAdd: ${error}`);
+      await interaction.reply({ embeds: [errorEmbed('Impossible d\'ajouter l\'utilisateur.')], ephemeral: true });
+    }
+  },
+
+  /**
+   * Retire un utilisateur du ticket
+   */
+  async handleRemove(interaction) {
+    const context = await this.checkTicketAndStaff(interaction);
+    if (!context) return;
+
+    const targetUser = interaction.options.getUser('user');
+
+    // On évite de retirer le créateur du ticket ou le staff responsable ?
+    // Le prompt ne spécifie pas, mais c'est mieux.
+    // "Retire un utilisateur du ticket"
+
+    try {
+      await interaction.channel.permissionOverwrites.delete(targetUser);
+
+      await interaction.reply({ embeds: [successEmbed(`${targetUser} a été retiré du ticket.`)] });
+    } catch (error) {
+      logger.error(`Erreur handleRemove: ${error}`);
+      await interaction.reply({ embeds: [errorEmbed('Impossible de retirer l\'utilisateur.')], ephemeral: true });
+    }
+  },
+
+  /**
+   * Renomme le salon du ticket
+   */
+  async handleRename(interaction) {
+    const context = await this.checkTicketAndStaff(interaction);
+    if (!context) return;
+
+    const newName = interaction.options.getString('name');
+
+    try {
+      await interaction.channel.setName(newName);
+      await interaction.reply({ embeds: [successEmbed(`Le ticket a été renommé en : **${newName}**`)] });
+    } catch (error) {
+      logger.error(`Erreur handleRename: ${error}`);
+      // Discord limite les renommages (2 par 10min)
+      if (error.code === 50035) { // Invalid Form Body (souvent rate limit ou caractères interdits) or similar
+         return interaction.reply({ embeds: [errorEmbed('Impossible de renommer (limite de 2 changements/10min ou nom invalide).')], ephemeral: true });
+      }
+      await interaction.reply({ embeds: [errorEmbed('Une erreur est survenue lors du renommage.')], ephemeral: true });
+    }
+  },
+
+  /**
+   * Transfère le ticket à un autre staff
+   */
+  async handleTransfer(interaction) {
+    const context = await this.checkTicketAndStaff(interaction);
+    if (!context) return;
+    const { ticket, config } = context;
+
+    const targetStaff = interaction.options.getUser('staff');
+    const targetMember = await interaction.guild.members.fetch(targetStaff.id).catch(() => null);
+
+    if (!targetMember) {
+        return interaction.reply({ embeds: [errorEmbed('Utilisateur introuvable.')], ephemeral: true });
+    }
+
+    // Vérifier que le nouveau staff a le rôle staff
+    const staffRoleId = config ? config.staff_role_id : null;
+    const isTargetStaff = staffRoleId && targetMember.roles.cache.has(staffRoleId);
+    const isTargetAdmin = targetMember.permissions.has(PermissionFlagsBits.Administrator);
+
+    if (!isTargetStaff && !isTargetAdmin) {
+        return interaction.reply({ embeds: [errorEmbed(`${targetStaff} n'est pas membre du staff.`)], ephemeral: true });
+    }
+
+    try {
+        // Update BDD
+        db.run('UPDATE tickets SET staff_id = ? WHERE id = ?', [targetStaff.id, ticket.id]);
+
+        // Envoyer message
+        const transferEmbed = new EmbedBuilder()
+            .setColor(0x780CED)
+            .setTitle('🔄 Ticket transféré')
+            .setDescription(`Ce ticket a été transféré à ${targetStaff}.`);
+
+        await interaction.reply({ embeds: [transferEmbed] });
+
+        // Ajouter les perms au nouveau staff si nécessaire
+        await interaction.channel.permissionOverwrites.edit(targetStaff, {
+            ViewChannel: true,
+            SendMessages: true,
+            ReadMessageHistory: true,
+            ManageMessages: true
+        });
+
+    } catch (error) {
+        logger.error(`Erreur handleTransfer: ${error}`);
+        await interaction.reply({ embeds: [errorEmbed('Erreur lors du transfert du ticket.')], ephemeral: true });
     }
   },
 
