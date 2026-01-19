@@ -15,9 +15,10 @@ function authenticateWebhook(req, siteName) {
     case 'secret':
       return req.body.secret === config.secret;
 
-    case 'ip':
+    case 'ip': {
       const clientIp = req.ip || req.connection.remoteAddress;
       return config.allowedIps && config.allowedIps.includes(clientIp);
+    }
 
     default:
       // Si aucune auth configurée pour le site, on refuse par sécurité
@@ -44,8 +45,8 @@ function getWebhookConfig(siteName) {
       token: process.env.VOTE_TOKEN_TOPSERVEURS
     },
     'serveur-prive.net': {
-      authMethod: 'secret',
-      secret: process.env.VOTE_SECRET_SERVEURPRIVE
+      authMethod: 'token',
+      token: process.env.SERVEURPRIVE_TOKEN || process.env.VOTE_SECRET_SERVEURPRIVE
     }
   };
 

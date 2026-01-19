@@ -16,23 +16,33 @@ class VoteHandler {
   }
 
   /**
-   * Traite un vote (webhook ou manuel)
+   * Traite un vote (webhook, polling ou manuel)
    */
   async processVote(voteData, method = 'webhook', verifiedBy = null) {
-    const { userId, guildId, siteName } = voteData;
+    const { userId, guildId, siteName, externalVoteId, votedAt } = voteData;
+    const voteTime = votedAt || Date.now();
 
     try {
+      // 0. Vérifier si le vote externe existe déjà
+      if (externalVoteId) {
+        const existing = db.get('SELECT id FROM user_votes WHERE external_vote_id = ?', [externalVoteId]);
+        if (existing) {
+          logger.info(`Vote ${externalVoteId} déjà traité, ignoré`);
+          return false;
+        }
+      }
+
       // 1. Vérifier le cooldown (24h)
-      if (await this.isOnCooldown(userId, guildId, siteName)) {
+      if (await this.isOnCooldown(userId, guildId, siteName, voteTime)) {
         logger.info(`Vote ignoré: ${userId} en cooldown sur ${siteName}`);
         return false;
       }
 
       // 2. Enregistrer le vote
       db.run(`
-        INSERT INTO user_votes (user_id, guild_id, site_name, voted_at, verification_method, verified_by)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `, [userId, guildId, siteName, Date.now(), method, verifiedBy]);
+        INSERT INTO user_votes (user_id, guild_id, site_name, voted_at, verification_method, verified_by, external_vote_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `, [userId, guildId, siteName, voteTime, method, verifiedBy, externalVoteId || null]);
 
       // 3. Envoyer le message de remerciement
       await this.sendThankYouMessage(userId, guildId, siteName);
@@ -53,7 +63,7 @@ class VoteHandler {
   /**
    * Vérifie si l'utilisateur est en cooldown pour ce site
    */
-  async isOnCooldown(userId, guildId, siteName) {
+  async isOnCooldown(userId, guildId, siteName, currentTime = Date.now()) {
     const cooldown = 24 * 60 * 60 * 1000; // 24 heures
     const lastVote = db.get(`
       SELECT voted_at FROM user_votes
@@ -65,8 +75,7 @@ class VoteHandler {
     if (!lastVote) return false;
 
     // Si lastVote.voted_at est un timestamp (INTEGER), on compare directement
-    // Si c'est une string DATETIME (ancien format), il faudrait parser, mais on assume le nouveau format
-    return (Date.now() - lastVote.voted_at) < cooldown;
+    return (currentTime - lastVote.voted_at) < cooldown;
   }
 
   /**
@@ -146,8 +155,9 @@ class VoteHandler {
             SET xp = xp + ?
             WHERE user_id = ? AND guild_id = ?
         `, [rewards.reward_xp, userId, guildId]);
-      } catch (e) {
+      } catch (error) {
           // Table might not exist
+          logger.debug(`Impossible de donner l'XP de vote: ${error.message}`);
       }
     }
 
@@ -159,8 +169,9 @@ class VoteHandler {
             SET balance = balance + ?
             WHERE user_id = ? AND guild_id = ?
         `, [rewards.reward_money, userId, guildId]);
-      } catch (e) {
+      } catch (error) {
           // Table might not exist
+          logger.debug(`Impossible de donner l'argent de vote: ${error.message}`);
       }
     }
   }
