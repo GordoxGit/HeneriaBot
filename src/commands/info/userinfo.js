@@ -3,7 +3,7 @@
  * Affiche les informations détaillées d'un membre
  */
 
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const { createEmbed } = require('../../utils/embedBuilder');
 
 module.exports = {
@@ -30,7 +30,7 @@ module.exports = {
       // Si l'utilisateur n'est pas dans le serveur
       return interaction.reply({
         content: "Cet utilisateur n'est pas membre de ce serveur.",
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
 

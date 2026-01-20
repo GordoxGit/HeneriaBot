@@ -3,7 +3,7 @@
  * Teste la carte de bienvenue
  */
 
-const { SlashCommandBuilder, PermissionFlagsBits, AttachmentBuilder } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, AttachmentBuilder, MessageFlags } = require('discord.js');
 const db = require('../../database/db');
 const { createEmbed, errorEmbed, successEmbed } = require('../../utils/embedBuilder');
 const { generateWelcomeCard } = require('../../utils/welcomeCard');
@@ -19,7 +19,7 @@ module.exports = {
    * @param {import('discord.js').ChatInputCommandInteraction} interaction
    */
   async execute(interaction) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     try {
       // 1. Récupérer la config

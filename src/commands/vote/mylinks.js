@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const db = require('../../database/db');
 
 module.exports = {
@@ -23,7 +23,7 @@ module.exports = {
             description: 'Vous n\'avez aucune liaison active.\n\n' +
                          'Utilisez `/linkvote` pour lier votre pseudo à un site de vote.'
           }],
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
       }
 
@@ -48,7 +48,7 @@ module.exports = {
 
       embed.setFooter({ text: 'Utilisez /unlinkvote pour supprimer une liaison' });
 
-      await interaction.reply({ embeds: [embed], ephemeral: true });
+      await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
 
     } catch (error) {
       console.error('[mylinks] Erreur:', error);
@@ -58,7 +58,7 @@ module.exports = {
           title: '❌ Erreur',
           description: 'Une erreur est survenue.'
         }],
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
   }

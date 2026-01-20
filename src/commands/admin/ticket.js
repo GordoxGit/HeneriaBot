@@ -3,7 +3,7 @@
  * Gestion du système de tickets
  */
 
-const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } = require('discord.js');
 const db = require('../../database/db');
 const { successEmbed, errorEmbed } = require('../../utils/embedBuilder');
 const logger = require('../../utils/logger');
@@ -105,7 +105,7 @@ module.exports = {
     if (!ticket) {
       await interaction.reply({
         embeds: [errorEmbed('Cette commande ne peut être utilisée que dans un salon de ticket.')],
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
       return null;
     }
@@ -113,7 +113,7 @@ module.exports = {
     if (ticket.status === 'closed') {
       await interaction.reply({
         embeds: [errorEmbed('Ce ticket est déjà fermé.')],
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
       return null;
     }
@@ -128,7 +128,7 @@ module.exports = {
     if (!isAdmin && !isStaff) {
       await interaction.reply({
         embeds: [errorEmbed('Vous n\'avez pas la permission de gérer ce ticket.')],
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
       return null;
     }
@@ -156,7 +156,7 @@ module.exports = {
       await interaction.reply({ embeds: [successEmbed(`${targetUser} a été ajouté au ticket.`)] });
     } catch (error) {
       logger.error(`Erreur handleAdd: ${error}`);
-      await interaction.reply({ embeds: [errorEmbed('Impossible d\'ajouter l\'utilisateur.')], ephemeral: true });
+      await interaction.reply({ embeds: [errorEmbed('Impossible d\'ajouter l\'utilisateur.')], flags: MessageFlags.Ephemeral });
     }
   },
 
@@ -179,7 +179,7 @@ module.exports = {
       await interaction.reply({ embeds: [successEmbed(`${targetUser} a été retiré du ticket.`)] });
     } catch (error) {
       logger.error(`Erreur handleRemove: ${error}`);
-      await interaction.reply({ embeds: [errorEmbed('Impossible de retirer l\'utilisateur.')], ephemeral: true });
+      await interaction.reply({ embeds: [errorEmbed('Impossible de retirer l\'utilisateur.')], flags: MessageFlags.Ephemeral });
     }
   },
 
@@ -199,9 +199,9 @@ module.exports = {
       logger.error(`Erreur handleRename: ${error}`);
       // Discord limite les renommages (2 par 10min)
       if (error.code === 50035) { // Invalid Form Body (souvent rate limit ou caractères interdits) or similar
-         return interaction.reply({ embeds: [errorEmbed('Impossible de renommer (limite de 2 changements/10min ou nom invalide).')], ephemeral: true });
+         return interaction.reply({ embeds: [errorEmbed('Impossible de renommer (limite de 2 changements/10min ou nom invalide).')], flags: MessageFlags.Ephemeral });
       }
-      await interaction.reply({ embeds: [errorEmbed('Une erreur est survenue lors du renommage.')], ephemeral: true });
+      await interaction.reply({ embeds: [errorEmbed('Une erreur est survenue lors du renommage.')], flags: MessageFlags.Ephemeral });
     }
   },
 
@@ -217,7 +217,7 @@ module.exports = {
     const targetMember = await interaction.guild.members.fetch(targetStaff.id).catch(() => null);
 
     if (!targetMember) {
-        return interaction.reply({ embeds: [errorEmbed('Utilisateur introuvable.')], ephemeral: true });
+        return interaction.reply({ embeds: [errorEmbed('Utilisateur introuvable.')], flags: MessageFlags.Ephemeral });
     }
 
     // Vérifier que le nouveau staff a le rôle staff
@@ -226,7 +226,7 @@ module.exports = {
     const isTargetAdmin = targetMember.permissions.has(PermissionFlagsBits.Administrator);
 
     if (!isTargetStaff && !isTargetAdmin) {
-        return interaction.reply({ embeds: [errorEmbed(`${targetStaff} n'est pas membre du staff.`)], ephemeral: true });
+        return interaction.reply({ embeds: [errorEmbed(`${targetStaff} n'est pas membre du staff.`)], flags: MessageFlags.Ephemeral });
     }
 
     try {
@@ -251,7 +251,7 @@ module.exports = {
 
     } catch (error) {
         logger.error(`Erreur handleTransfer: ${error}`);
-        await interaction.reply({ embeds: [errorEmbed('Erreur lors du transfert du ticket.')], ephemeral: true });
+        await interaction.reply({ embeds: [errorEmbed('Erreur lors du transfert du ticket.')], flags: MessageFlags.Ephemeral });
     }
   },
 

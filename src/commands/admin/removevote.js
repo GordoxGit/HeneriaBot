@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, MessageFlags } = require('discord.js');
 const db = require('../../database/db');
 
 module.exports = {
@@ -68,7 +68,7 @@ module.exports = {
           .setTitle('❌ Erreur')
           .setDescription(`Le site **${nom}** n'existe pas.`);
 
-        await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+        await interaction.reply({ embeds: [errorEmbed], flags: MessageFlags.Ephemeral });
       }
 
     } catch (error) {
@@ -78,7 +78,7 @@ module.exports = {
         .setTitle('❌ Erreur')
         .setDescription('Une erreur est survenue lors de la suppression du site de vote.');
 
-      await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+      await interaction.reply({ embeds: [errorEmbed], flags: MessageFlags.Ephemeral });
     }
   },
 };

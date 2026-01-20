@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, MessageFlags } = require('discord.js');
 const db = require('../../database/db');
 
 module.exports = {
@@ -35,7 +35,7 @@ module.exports = {
         .setTitle('❌ Erreur')
         .setDescription('L\'URL doit commencer par `http://` ou `https://`.');
 
-      return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+      return interaction.reply({ embeds: [errorEmbed], flags: MessageFlags.Ephemeral });
     }
 
     try {
@@ -48,7 +48,7 @@ module.exports = {
           .setTitle('❌ Erreur')
           .setDescription(`Le site de vote **${nom}** existe déjà.`);
 
-        return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+        return interaction.reply({ embeds: [errorEmbed], flags: MessageFlags.Ephemeral });
       }
 
       // Insertion en BDD
@@ -78,7 +78,7 @@ module.exports = {
         .setTitle('❌ Erreur')
         .setDescription('Une erreur est survenue lors de l\'ajout du site de vote.');
 
-      await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+      await interaction.reply({ embeds: [errorEmbed], flags: MessageFlags.Ephemeral });
     }
   },
 };

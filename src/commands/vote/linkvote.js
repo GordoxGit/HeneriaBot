@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const db = require('../../database/db');
 
 module.exports = {
@@ -38,7 +38,7 @@ module.exports = {
             description: `Le pseudo **${username}** est déjà lié à un autre utilisateur sur ${site}.`,
             footer: { text: 'Si c\'est votre pseudo, contactez un administrateur.' }
           }],
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
       }
 
@@ -104,7 +104,7 @@ module.exports = {
         .setFooter({ text: 'Après vérification, vous pourrez remettre votre pseudo normal' })
         .setTimestamp();
 
-      await interaction.reply({ embeds: [embed], ephemeral: true });
+      await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
 
     } catch (error) {
       console.error('[linkvote] Erreur:', error);
@@ -114,7 +114,7 @@ module.exports = {
           title: '❌ Erreur',
           description: 'Une erreur est survenue lors de la création de la liaison.'
         }],
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
   },

@@ -21,12 +21,14 @@ class HytaleGamePoller {
    * Démarre le polling (toutes les 2 minutes)
    */
   start() {
+    console.log('[Hytale.game] 🚀 Démarrage du service de polling...');
+    console.log(`[Hytale.game] API Key: ${this.apiKey ? '✅ Configuré' : '❌ Manquant'}`);
+    console.log(`[Hytale.game] Server ID: ${this.serverId ? '✅ Configuré' : '❌ Manquant'}`);
+
     if (!this.apiKey || !this.serverId) {
-      logger.warn('[Hytale.game] Service non démarré: HYTALEGAME_API_KEY ou HYTALEGAME_SERVER_ID manquant');
+      console.warn('[Hytale.game] Service non démarré: HYTALEGAME_API_KEY ou HYTALEGAME_SERVER_ID manquant');
       return;
     }
-
-    logger.info('[Hytale.game] Démarrage du service de polling...');
 
     // Vérification immédiate au démarrage
     this.checkVotes();

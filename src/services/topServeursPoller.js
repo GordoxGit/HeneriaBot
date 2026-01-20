@@ -10,7 +10,7 @@ const config = require('../config');
 
 class TopServeursPoller {
   constructor() {
-    this.token = process.env.TOPSERVEURS_TOKEN;
+    this.apiKey = process.env.TOPSERVEURS_API_KEY; // ✅ Pas TOKEN
     // URL hypothétique, à ajuster selon la documentation réelle
     this.baseUrl = 'https://api.top-serveurs.net/v1';
     this.interval = null;
@@ -21,12 +21,13 @@ class TopServeursPoller {
    * Démarre le polling (toutes les 2 minutes)
    */
   start() {
-    if (!this.token) {
-      logger.warn('[Top-serveurs.net] Service non démarré: TOPSERVEURS_TOKEN manquant');
+    console.log('[Top-serveurs.net] 🚀 Démarrage du service de polling...');
+    console.log(`[Top-serveurs.net] API Key: ${this.apiKey ? '✅ Configuré' : '❌ Manquant'}`);
+
+    if (!this.apiKey) {
+      console.warn('[Top-serveurs.net] Service non démarré: TOPSERVEURS_API_KEY manquant');
       return;
     }
-
-    logger.info('[Top-serveurs.net] Démarrage du service de polling...');
 
     // Vérification immédiate
     this.checkVotes();
@@ -57,13 +58,13 @@ class TopServeursPoller {
         `${this.baseUrl}/votes`,
         {
           headers: {
-            'Authorization': `Bearer ${this.token}`,
+            'Authorization': `Bearer ${this.apiKey}`,
             'Accept': 'application/json'
           },
           params: {
              // Si l'API supporte le filtrage par date
              // since: Math.floor(this.lastCheck / 1000)
-             token: this.token // Parfois passé en param
+             token: this.apiKey // Parfois passé en param
           }
         }
       );
