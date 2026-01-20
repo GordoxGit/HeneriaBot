@@ -183,6 +183,23 @@ function createTables() {
         xp_amount INTEGER DEFAULT 0,
         role_id TEXT
       )`
+    },
+    {
+      name: 'vote_username_links',
+      sql: `CREATE TABLE IF NOT EXISTS vote_username_links (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        site_name TEXT NOT NULL,
+        site_username TEXT NOT NULL,
+        verification_code TEXT,
+        verified BOOLEAN DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        verified_at INTEGER,
+        expires_at INTEGER,
+        UNIQUE(user_id, guild_id, site_name),
+        UNIQUE(guild_id, site_name, site_username)
+      )`
     }
   ];
 
@@ -220,6 +237,14 @@ function createTables() {
     {
       name: 'idx_vote_sites_guild',
       sql: `CREATE INDEX IF NOT EXISTS idx_vote_sites_guild ON vote_sites(guild_id)`
+    },
+    {
+      name: 'idx_vote_links_username',
+      sql: `CREATE INDEX IF NOT EXISTS idx_vote_links_username ON vote_username_links(guild_id, site_name, site_username)`
+    },
+    {
+      name: 'idx_vote_links_code',
+      sql: `CREATE INDEX IF NOT EXISTS idx_vote_links_code ON vote_username_links(verification_code)`
     }
   ];
 

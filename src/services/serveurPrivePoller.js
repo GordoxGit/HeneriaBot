@@ -68,7 +68,9 @@ class ServeurPrivePoller {
         }
       );
 
-      const votes = response.data.votes || [];
+      // Support des formats possibles (data ou votes)
+      const votes = response.data.data || response.data.votes || [];
+
       if (votes.length > 0) {
         logger.info(`[Serveur-prive.net] ${votes.length} nouveau(x) vote(s) trouvé(s)`);
       }
@@ -89,24 +91,43 @@ class ServeurPrivePoller {
    */
   async processVote(voteData) {
     try {
-      // Adaptation des champs selon format supposé
-      const {
-        discord_id,
-        username,
-        created_at,
-        id
-      } = voteData;
+      const { username, voted_at, created_at, id, vote_id } = voteData;
 
       const guildId = config.guildId;
       if (!guildId) return;
 
+      // 1. Essayer de récupérer l'ID Discord directement
+      let discordId = voteData.discord_id || voteData.user_id;
+
+      // 2. Sinon, essayer de résoudre via le système de liaison
+      if (!discordId) {
+        discordId = voteHandler.resolveUsernameToDiscordId(
+          username,
+          'serveur-prive.net',
+          guildId
+        );
+      }
+
+      if (!discordId) {
+        // Vote non lié, on ignore silencieusement (ou log debug)
+        return;
+      }
+
+      // Déterminer le timestamp
+      let timestamp = Date.now();
+      if (voted_at) timestamp = voted_at * 1000; // UNIX timestamp (seconds)
+      else if (created_at) timestamp = new Date(created_at).getTime();
+
+      // Construire un ID unique pour éviter les doublons
+      const externalVoteId = id || vote_id || `serveur-prive_${username}_${timestamp}`;
+
       await voteHandler.processVote({
-        userId: discord_id || voteData.user_id, // Fallback
+        userId: discordId,
         guildId: guildId,
         siteName: 'serveur-prive.net',
-        externalVoteId: id || voteData.vote_id,
+        externalVoteId: String(externalVoteId),
         username: username,
-        votedAt: created_at ? new Date(created_at).getTime() : Date.now()
+        votedAt: timestamp
       }, 'api_polling');
 
     } catch (error) {

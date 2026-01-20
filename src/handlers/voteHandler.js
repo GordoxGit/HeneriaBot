@@ -61,6 +61,96 @@ class VoteHandler {
   }
 
   /**
+   * Résout un username de site en Discord ID
+   * @param {string} username - Username sur le site
+   * @param {string} siteName - Nom du site
+   * @param {string} guildId - ID du serveur
+   * @returns {string|null} Discord ID ou null
+   */
+  resolveUsernameToDiscordId(username, siteName, guildId) {
+    // 1. Chercher tous les codes potentiels dans le username
+    const matches = [...username.matchAll(/([A-Z0-9]{6})/g)];
+
+    for (const match of matches) {
+      const code = match[1];
+
+      // Chercher une liaison en attente avec ce code
+      const pendingLink = db.get(`
+        SELECT user_id, site_username FROM vote_username_links
+        WHERE guild_id = ? AND site_name = ? AND verification_code = ?
+          AND verified = 0 AND expires_at > ?
+      `, [guildId, siteName, code, Date.now()]);
+
+      if (pendingLink) {
+        // Vérifier que le username contient bien le pseudo lié
+        if (username.includes(pendingLink.site_username)) {
+          // VÉRIFICATION RÉUSSIE ! Marquer comme vérifié
+          db.run(`
+            UPDATE vote_username_links
+            SET verified = 1, verified_at = ?, verification_code = NULL
+            WHERE guild_id = ? AND site_name = ? AND verification_code = ?
+          `, [Date.now(), guildId, siteName, code]);
+
+          logger.success(`[Vote] ✅ Liaison vérifiée: ${pendingLink.site_username} -> ${pendingLink.user_id}`);
+
+          // Envoyer une confirmation en DM
+          this.sendVerificationSuccessDM(pendingLink.user_id, siteName, pendingLink.site_username);
+
+          return pendingLink.user_id;
+        }
+      }
+    }
+
+    // 2. Chercher une liaison vérifiée existante
+    const verifiedLink = db.get(`
+      SELECT user_id FROM vote_username_links
+      WHERE guild_id = ? AND site_name = ? AND site_username = ? AND verified = 1
+    `, [guildId, siteName, username]);
+
+    if (verifiedLink) {
+      return verifiedLink.user_id;
+    }
+
+    // 3. Aucune liaison trouvée
+    return null;
+  }
+
+  /**
+   * Envoie un DM de confirmation de vérification
+   */
+  async sendVerificationSuccessDM(userId, siteName, username) {
+    if (!this.client) return;
+
+    try {
+      const user = await this.client.users.fetch(userId);
+
+      await user.send({
+        embeds: [{
+          color: 0x00ff00,
+          title: '✅ Liaison vérifiée !',
+          description: `Votre pseudo **${username}** sur **${siteName}** a été lié avec succès à votre compte Discord.`,
+          fields: [
+            {
+              name: '🎁 Prochaines récompenses',
+              value: 'Vos prochains votes sur ce site seront automatiquement détectés et récompensés !'
+            },
+            {
+              name: '✏️ Pseudo',
+              value: 'Vous pouvez maintenant remettre votre pseudo normal sur le site de vote.'
+            }
+          ],
+          footer: { text: 'Heneria • Système de votes' },
+          timestamp: new Date()
+        }]
+      });
+
+      logger.info(`[Vote] DM de confirmation envoyé à ${userId}`);
+    } catch (error) {
+      logger.error(`[Vote] Impossible d'envoyer le DM à ${userId}: ${error.message}`);
+    }
+  }
+
+  /**
    * Vérifie si l'utilisateur est en cooldown pour ce site
    */
   async isOnCooldown(userId, guildId, siteName, currentTime = Date.now()) {

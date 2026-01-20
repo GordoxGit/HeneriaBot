@@ -51,10 +51,12 @@ async function init() {
     // Services de polling
     const hytaleGamePoller = require('./services/hytaleGamePoller');
     const serveurPrivePoller = require('./services/serveurPrivePoller');
+    const topServeursPoller = require('./services/topServeursPoller');
 
     client.once('ready', () => {
       hytaleGamePoller.start();
       serveurPrivePoller.start();
+      topServeursPoller.start();
     });
 
     const express = require('express');
@@ -90,6 +92,7 @@ process.on('SIGINT', () => {
   logger.info('Arrêt du bot...');
   require('./services/hytaleGamePoller').stop();
   require('./services/serveurPrivePoller').stop();
+  require('./services/topServeursPoller').stop();
   db.close();
   process.exit(0);
 });
