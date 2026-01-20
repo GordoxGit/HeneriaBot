@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags } = require('discord.js');
 const db = require('../../database/db');
 const { updateMemberCounter } = require('../../utils/memberCounter');
 const { successEmbed, errorEmbed } = require('../../utils/embedBuilder');
@@ -15,21 +15,22 @@ module.exports = {
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
   async execute(interaction) {
+    // ✅ Déférer la réponse si traitement long
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
     const channel = interaction.options.getChannel('salon');
 
     // Vérification supplémentaire (bien que addChannelTypes filtre déjà dans l'UI)
     if (channel.type !== ChannelType.GuildVoice) {
-      return interaction.reply({
-        embeds: [errorEmbed('Ce salon n\'est pas un salon vocal.')],
-        ephemeral: true
+      return interaction.editReply({
+        embeds: [errorEmbed('Ce salon n\'est pas un salon vocal.')]
       });
     }
 
     // Vérifier les permissions du bot sur le salon
     if (!channel.permissionsFor(interaction.guild.members.me).has(PermissionFlagsBits.ManageChannels)) {
-      return interaction.reply({
-        embeds: [errorEmbed('Je n\'ai pas la permission de gérer ce salon (Manage Channels).')],
-        ephemeral: true
+      return interaction.editReply({
+        embeds: [errorEmbed('Je n\'ai pas la permission de gérer ce salon (Manage Channels).')]
       });
     }
 
@@ -48,15 +49,14 @@ module.exports = {
       // Forcer la mise à jour immédiate
       await updateMemberCounter(interaction.guild, true);
 
-      await interaction.reply({
+      await interaction.editReply({
         embeds: [successEmbed(`Compteur configuré sur le salon ${channel} !`)]
       });
 
     } catch (error) {
       console.error(error);
-      await interaction.reply({
-        embeds: [errorEmbed('Une erreur est survenue lors de la configuration du compteur.')],
-        ephemeral: true
+      await interaction.editReply({
+        embeds: [errorEmbed('Une erreur est survenue lors du configuration du compteur.')]
       });
     }
   },

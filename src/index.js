@@ -53,7 +53,7 @@ async function init() {
     const serveurPrivePoller = require('./services/serveurPrivePoller');
     const topServeursPoller = require('./services/topServeursPoller');
 
-    client.once('ready', () => {
+    client.once('clientReady', () => {
       hytaleGamePoller.start();
       serveurPrivePoller.start();
       topServeursPoller.start();

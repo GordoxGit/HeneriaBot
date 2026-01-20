@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const db = require('../../database/db');
 
 module.exports = {
@@ -31,7 +31,7 @@ module.exports = {
             title: '⚠️ Aucune liaison',
             description: `Vous n'avez pas de liaison active sur **${site}**.`
           }],
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
       }
 
@@ -55,7 +55,7 @@ module.exports = {
             }
           ]
         }],
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
 
     } catch (error) {
@@ -66,7 +66,7 @@ module.exports = {
           title: '❌ Erreur',
           description: 'Une erreur est survenue lors de la suppression de la liaison.'
         }],
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
   }

@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 const { createEmbed } = require('../../utils/embedBuilder');
 const db = require('../../database/db');
 
@@ -23,7 +23,7 @@ module.exports = {
 
       return interaction.reply({
         embeds: [warningEmbed],
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
 

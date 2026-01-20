@@ -3,7 +3,7 @@
  * Définit le salon de bienvenue
  */
 
-const { SlashCommandBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags } = require('discord.js');
 const db = require('../../database/db');
 const { successEmbed, errorEmbed } = require('../../utils/embedBuilder');
 
@@ -30,7 +30,7 @@ module.exports = {
     if (!channel.isTextBased()) {
         return interaction.reply({
             embeds: [errorEmbed('Veuillez sélectionner un salon textuel.')],
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
         });
     }
 
@@ -51,7 +51,7 @@ module.exports = {
       console.error(error);
       await interaction.reply({
         embeds: [errorEmbed('Une erreur est survenue lors de la sauvegarde de la configuration.')],
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
   },

@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const voteHandler = require('../../handlers/voteHandler');
 const db = require('../../database/db');
 const logger = require('../../utils/logger');
@@ -55,7 +55,7 @@ module.exports = {
             title: '❌ Erreur',
             description: `Le site **${siteName}** n'existe pas.`
           }],
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
       }
 
@@ -67,7 +67,7 @@ module.exports = {
             title: '⏰ Cooldown actif',
             description: `${user} est encore en cooldown sur **${siteName}**.`
           }],
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
       }
 
@@ -103,7 +103,7 @@ module.exports = {
           title: '❌ Erreur',
           description: 'Une erreur est survenue lors de la vérification du vote.'
         }],
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
   }

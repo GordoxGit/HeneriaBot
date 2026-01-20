@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, MessageFlags } = require('discord.js');
 const db = require('../../database/db');
 
 module.exports = {
@@ -45,7 +45,7 @@ module.exports = {
         .setTitle('❌ Erreur')
         .setDescription('Une erreur est survenue lors de la récupération des sites de vote.');
 
-      await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+      await interaction.reply({ embeds: [errorEmbed], flags: MessageFlags.Ephemeral });
     }
   },
 };

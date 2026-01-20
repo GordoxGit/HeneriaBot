@@ -3,7 +3,7 @@
  * Personnalise le message de bienvenue
  */
 
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const db = require('../../database/db');
 const { successEmbed, errorEmbed } = require('../../utils/embedBuilder');
 
@@ -50,7 +50,7 @@ module.exports = {
       console.error(error);
       await interaction.reply({
         embeds: [errorEmbed('Une erreur est survenue lors de la sauvegarde du message.')],
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
   },

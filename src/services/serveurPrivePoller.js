@@ -11,7 +11,6 @@ const config = require('../config');
 class ServeurPrivePoller {
   constructor() {
     this.token = process.env.SERVEURPRIVE_TOKEN;
-    this.serverId = process.env.SERVEURPRIVE_SERVER_ID;
     // URL basée sur la documentation standard ou suggestion
     this.baseUrl = 'https://serveur-prive.net/api/v1';
     this.interval = null;
@@ -22,12 +21,13 @@ class ServeurPrivePoller {
    * Démarre le polling (toutes les 2 minutes)
    */
   start() {
-    if (!this.token || !this.serverId) {
-      logger.warn('[Serveur-prive.net] Service non démarré: SERVEURPRIVE_TOKEN ou SERVEURPRIVE_SERVER_ID manquant');
+    console.log('[Serveur-prive.net] 🚀 Démarrage du service de polling...');
+    console.log(`[Serveur-prive.net] Token: ${this.token ? '✅ Configuré' : '❌ Manquant'}`);
+
+    if (!this.token) {
+      console.warn('[Serveur-prive.net] Service non démarré: SERVEURPRIVE_TOKEN manquant');
       return;
     }
-
-    logger.info('[Serveur-prive.net] Démarrage du service de polling...');
 
     // Vérification immédiate
     this.checkVotes();
@@ -56,7 +56,7 @@ class ServeurPrivePoller {
       // Note: L'endpoint exact dépend de la documentation officielle.
       // On suppose une structure standard ici.
       const response = await axios.get(
-        `${this.baseUrl}/servers/${this.serverId}/votes`,
+        `${this.baseUrl}/votes`,
         {
           headers: {
             'Authorization': `Bearer ${this.token}`,

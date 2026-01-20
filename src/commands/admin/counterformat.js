@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const db = require('../../database/db');
 const { updateMemberCounter } = require('../../utils/memberCounter');
 const { successEmbed, errorEmbed, infoEmbed } = require('../../utils/embedBuilder');
@@ -20,7 +20,7 @@ module.exports = {
     if (!format.includes('{count}')) {
       return interaction.reply({
         embeds: [errorEmbed('Le format doit contenir `{count}` pour afficher le nombre de membres.')],
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
 
@@ -50,7 +50,7 @@ module.exports = {
       console.error(error);
       await interaction.reply({
         embeds: [errorEmbed('Une erreur est survenue lors de la configuration du format.')],
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
   },
