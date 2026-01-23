@@ -38,9 +38,6 @@ function init() {
     // Migration des tables si nécessaire
     migrateTables();
 
-    // Initialisation des sites de vote par défaut
-    initVoteSites();
-
   } catch (error) {
     logger.error(`Erreur lors de l'initialisation de la base de données : ${error.message}`);
     throw error;
@@ -135,71 +132,6 @@ function createTables() {
         log_channel_id TEXT,
         staff_role_id TEXT
       )`
-    },
-    {
-      name: 'vote_sites',
-      sql: `CREATE TABLE IF NOT EXISTS vote_sites (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        guild_id TEXT NOT NULL,
-        name TEXT NOT NULL,
-        url TEXT NOT NULL,
-        enabled INTEGER DEFAULT 1,
-        position INTEGER DEFAULT 0,
-        reward_xp INTEGER DEFAULT 0,
-        reward_money INTEGER DEFAULT 0
-      )`
-    },
-    {
-      name: 'user_votes',
-      sql: `CREATE TABLE IF NOT EXISTS user_votes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id TEXT NOT NULL,
-        guild_id TEXT NOT NULL,
-        site_name TEXT NOT NULL,
-        voted_at INTEGER NOT NULL,
-        verified BOOLEAN DEFAULT 1,
-        verification_method TEXT DEFAULT 'webhook',
-        verified_by TEXT,
-        external_vote_id TEXT,
-        UNIQUE(user_id, guild_id, site_name, voted_at)
-      )`
-    },
-    {
-      name: 'vote_stats',
-      sql: `CREATE TABLE IF NOT EXISTS vote_stats (
-        user_id TEXT NOT NULL,
-        guild_id TEXT NOT NULL,
-        total_votes INTEGER DEFAULT 0,
-        last_vote INTEGER,
-        PRIMARY KEY (user_id, guild_id)
-      )`
-    },
-    {
-      name: 'vote_rewards',
-      sql: `CREATE TABLE IF NOT EXISTS vote_rewards (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        guild_id TEXT UNIQUE,
-        currency_amount INTEGER DEFAULT 0,
-        xp_amount INTEGER DEFAULT 0,
-        role_id TEXT
-      )`
-    },
-    {
-      name: 'vote_username_links',
-      sql: `CREATE TABLE IF NOT EXISTS vote_username_links (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id TEXT NOT NULL,
-        guild_id TEXT NOT NULL,
-        site_name TEXT NOT NULL,
-        site_username TEXT NOT NULL,
-        verification_code TEXT,
-        verified BOOLEAN DEFAULT 0,
-        created_at INTEGER NOT NULL,
-        verified_at INTEGER,
-        expires_at INTEGER,
-        UNIQUE(user_id, guild_id, site_name),
-        UNIQUE(guild_id, site_name, site_username)
-      )`
     }
   ];
 
@@ -225,26 +157,6 @@ function createTables() {
     {
       name: 'idx_tickets_status',
       sql: `CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status)`
-    },
-    {
-      name: 'idx_user_votes_lookup',
-      sql: `CREATE INDEX IF NOT EXISTS idx_user_votes_lookup ON user_votes(user_id, guild_id, site_name, voted_at)`
-    },
-    {
-      name: 'idx_external_vote_id',
-      sql: `CREATE INDEX IF NOT EXISTS idx_external_vote_id ON user_votes(external_vote_id)`
-    },
-    {
-      name: 'idx_vote_sites_guild',
-      sql: `CREATE INDEX IF NOT EXISTS idx_vote_sites_guild ON vote_sites(guild_id)`
-    },
-    {
-      name: 'idx_vote_links_username',
-      sql: `CREATE INDEX IF NOT EXISTS idx_vote_links_username ON vote_username_links(guild_id, site_name, site_username)`
-    },
-    {
-      name: 'idx_vote_links_code',
-      sql: `CREATE INDEX IF NOT EXISTS idx_vote_links_code ON vote_username_links(verification_code)`
     }
   ];
 
@@ -262,97 +174,7 @@ function createTables() {
  * Migre les tables existantes vers le nouveau schéma si nécessaire
  */
 function migrateTables() {
-  try {
-    // Migration vote_sites
-    const voteSitesInfo = db.prepare('PRAGMA table_info(vote_sites)').all();
-    const hasRewardXp = voteSitesInfo.some(col => col.name === 'reward_xp');
-
-    if (!hasRewardXp) {
-      db.prepare('ALTER TABLE vote_sites ADD COLUMN reward_xp INTEGER DEFAULT 0').run();
-      db.prepare('ALTER TABLE vote_sites ADD COLUMN reward_money INTEGER DEFAULT 0').run();
-      logger.info('Colonnes reward ajoutées à vote_sites');
-    }
-
-    const hasDetectionMethod = voteSitesInfo.some(col => col.name === 'detection_method');
-
-    if (!hasDetectionMethod) {
-      db.prepare("ALTER TABLE vote_sites ADD COLUMN detection_method TEXT DEFAULT 'polling'").run();
-      db.prepare('ALTER TABLE vote_sites ADD COLUMN webhook_id TEXT').run();
-      db.prepare('ALTER TABLE vote_sites ADD COLUMN webhook_channel_id TEXT').run();
-      logger.info('Colonnes detection_method/webhook ajoutées à vote_sites');
-    }
-
-    // Migration user_votes
-    const userVotesInfo = db.prepare('PRAGMA table_info(user_votes)').all();
-    const hasSiteId = userVotesInfo.some(col => col.name === 'site_id');
-    const hasExternalVoteId = userVotesInfo.some(col => col.name === 'external_vote_id');
-
-    if (hasSiteId) {
-      // Old schema detected
-      logger.info('Migration de la table user_votes...');
-      db.prepare('ALTER TABLE user_votes RENAME TO user_votes_old').run();
-
-      // Recreate table with new schema
-      db.prepare(`CREATE TABLE user_votes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id TEXT NOT NULL,
-        guild_id TEXT NOT NULL,
-        site_name TEXT NOT NULL,
-        voted_at INTEGER NOT NULL,
-        verified BOOLEAN DEFAULT 1,
-        verification_method TEXT DEFAULT 'webhook',
-        verified_by TEXT,
-        external_vote_id TEXT,
-        UNIQUE(user_id, guild_id, site_name, voted_at)
-      )`).run();
-
-      logger.info('Table user_votes migrée (ancienne sauvegardée en user_votes_old)');
-    } else if (!hasExternalVoteId) {
-      db.prepare('ALTER TABLE user_votes ADD COLUMN external_vote_id TEXT').run();
-      db.prepare('CREATE INDEX IF NOT EXISTS idx_external_vote_id ON user_votes(external_vote_id)').run();
-      logger.info('Colonne external_vote_id ajoutée à user_votes');
-    }
-  } catch (error) {
-    logger.error(`Erreur migration : ${error.message}`);
-  }
-}
-
-/**
- * Initialise les sites de vote par défaut s'ils n'existent pas
- */
-function initVoteSites() {
-  const guildId = config.guildId;
-
-  if (!guildId) {
-    logger.warn('GUILD_ID non configuré, impossible d\'initialiser les sites de vote par défaut');
-    return;
-  }
-
-  try {
-    const existingSites = db.prepare('SELECT count(*) as count FROM vote_sites WHERE guild_id = ?').get(guildId);
-
-    if (existingSites.count === 0) {
-      const defaultSites = [
-        { name: 'Hytale Game Serveurs', url: 'https://hytale.game/serveurs/?sid=heneria', position: 1 },
-        { name: 'Hytale-Servs', url: 'https://hytale-servs.fr/servers/heneria', position: 2 },
-        { name: 'Top-Serveurs Hytale', url: 'https://top-serveurs.net/hytale/heneria', position: 3 },
-        { name: 'Serveur-Prive Hytale', url: 'https://serveur-prive.net/hytale/heneria', position: 4 }
-      ];
-
-      const insert = db.prepare('INSERT INTO vote_sites (guild_id, name, url, position) VALUES (?, ?, ?, ?)');
-
-      const transaction = db.transaction((sites) => {
-        for (const site of sites) {
-          insert.run(guildId, site.name, site.url, site.position);
-        }
-      });
-
-      transaction(defaultSites);
-      logger.success('Sites de vote par défaut initialisés');
-    }
-  } catch (error) {
-    logger.error(`Erreur lors de l'initialisation des sites de vote : ${error.message}`);
-  }
+  // Pas de migrations pour le moment
 }
 
 /**

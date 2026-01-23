@@ -44,31 +44,6 @@ async function init() {
     // Connexion à Discord
     await client.login(config.token);
 
-    // Initialisation du système de votes (API + Handler)
-    const voteHandler = require('./handlers/voteHandler');
-    voteHandler.init(client);
-
-    // Services de polling
-    const serveurPrivePoller = require('./services/serveurPrivePoller');
-    const topServeursPoller = require('./services/topServeursPoller');
-
-    client.once('clientReady', () => {
-      serveurPrivePoller.start();
-      topServeursPoller.start();
-    });
-
-    const express = require('express');
-    const app = express();
-    const voteRouter = require('./api/voteWebhook');
-
-    app.use(express.json());
-    app.use('/api', voteRouter);
-
-    const apiPort = config.apiPort || 3000;
-    app.listen(apiPort, () => {
-      logger.success(`Serveur API démarré sur le port ${apiPort}`);
-    });
-
   } catch (error) {
     logger.error(`Erreur fatale lors du démarrage : ${error.message}`);
     process.exit(1);
@@ -88,8 +63,6 @@ process.on('uncaughtException', (error) => {
 
 process.on('SIGINT', () => {
   logger.info('Arrêt du bot...');
-  require('./services/serveurPrivePoller').stop();
-  require('./services/topServeursPoller').stop();
   db.close();
   process.exit(0);
 });
