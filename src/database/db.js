@@ -132,6 +132,86 @@ function createTables() {
         log_channel_id TEXT,
         staff_role_id TEXT
       )`
+    },
+    {
+      name: 'vote_sites',
+      sql: `CREATE TABLE IF NOT EXISTS vote_sites (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        slug TEXT NOT NULL,
+        url TEXT NOT NULL,
+        api_type TEXT NOT NULL,
+        api_base_url TEXT,
+        api_token TEXT,
+        webhook_channel_id TEXT,
+        cooldown_hours INTEGER DEFAULT 24,
+        reward_xp INTEGER DEFAULT 50,
+        reward_money INTEGER DEFAULT 100,
+        enabled INTEGER DEFAULT 1,
+        position INTEGER DEFAULT 0,
+        created_at INTEGER DEFAULT (strftime('%s', 'now')),
+        UNIQUE(guild_id, slug)
+      )`
+    },
+    {
+      name: 'user_votes',
+      sql: `CREATE TABLE IF NOT EXISTS user_votes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        site_slug TEXT NOT NULL,
+        voted_at INTEGER NOT NULL,
+        external_vote_id TEXT,
+        verification_method TEXT,
+        otp_token TEXT,
+        claimed INTEGER DEFAULT 0,
+        rewards_given INTEGER DEFAULT 0,
+        UNIQUE(external_vote_id),
+        FOREIGN KEY (guild_id, site_slug) REFERENCES vote_sites(guild_id, slug) ON DELETE CASCADE
+      )`
+    },
+    {
+      name: 'vote_otp_sessions',
+      sql: `CREATE TABLE IF NOT EXISTS vote_otp_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        site_slug TEXT NOT NULL,
+        otp_token TEXT NOT NULL,
+        created_at INTEGER DEFAULT (strftime('%s', 'now')),
+        expires_at INTEGER NOT NULL,
+        used INTEGER DEFAULT 0,
+        UNIQUE(otp_token)
+      )`
+    },
+    {
+      name: 'vote_stats',
+      sql: `CREATE TABLE IF NOT EXISTS vote_stats (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        total_votes INTEGER DEFAULT 0,
+        monthly_votes INTEGER DEFAULT 0,
+        current_streak INTEGER DEFAULT 0,
+        best_streak INTEGER DEFAULT 0,
+        last_vote_at INTEGER,
+        last_month_reset INTEGER,
+        UNIQUE(user_id, guild_id)
+      )`
+    },
+    {
+      name: 'vote_rewards_config',
+      sql: `CREATE TABLE IF NOT EXISTS vote_rewards_config (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        reward_type TEXT NOT NULL,
+        base_value INTEGER NOT NULL,
+        streak_bonus_percent INTEGER DEFAULT 0,
+        max_streak_bonus INTEGER DEFAULT 100,
+        enabled INTEGER DEFAULT 1,
+        UNIQUE(guild_id, reward_type)
+      )`
     }
   ];
 
@@ -157,6 +237,26 @@ function createTables() {
     {
       name: 'idx_tickets_status',
       sql: `CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status)`
+    },
+    {
+      name: 'idx_user_votes_user',
+      sql: `CREATE INDEX IF NOT EXISTS idx_user_votes_user ON user_votes(user_id, guild_id)`
+    },
+    {
+      name: 'idx_user_votes_site',
+      sql: `CREATE INDEX IF NOT EXISTS idx_user_votes_site ON user_votes(site_slug, guild_id)`
+    },
+    {
+      name: 'idx_user_votes_time',
+      sql: `CREATE INDEX IF NOT EXISTS idx_user_votes_time ON user_votes(voted_at)`
+    },
+    {
+      name: 'idx_otp_user',
+      sql: `CREATE INDEX IF NOT EXISTS idx_otp_user ON vote_otp_sessions(user_id, guild_id)`
+    },
+    {
+      name: 'idx_otp_expires',
+      sql: `CREATE INDEX IF NOT EXISTS idx_otp_expires ON vote_otp_sessions(expires_at)`
     }
   ];
 

@@ -3,11 +3,14 @@
  */
 
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
+const express = require('express');
 const config = require('./config');
 const logger = require('./utils/logger');
 const db = require('./database/db');
 const loadCommands = require('./handlers/commandHandler');
 const loadEvents = require('./handlers/eventHandler');
+const voteHandler = require('./handlers/voteHandler');
+const voteWebhookRoutes = require('./api/webhooks/voteWebhook');
 
 // Initialisation du client Discord avec les intents nécessaires
 const client = new Client({
@@ -43,6 +46,19 @@ async function init() {
 
     // Connexion à Discord
     await client.login(config.token);
+
+    // Initialisation du système de votes
+    voteHandler.init(client);
+
+    // Initialisation du serveur API (Webhooks)
+    const app = express();
+    app.use(express.json());
+    app.use('/webhooks/vote', voteWebhookRoutes);
+
+    const WEBHOOK_PORT = process.env.WEBHOOK_PORT || 3001;
+    app.listen(WEBHOOK_PORT, () => {
+      logger.info(`[API] Serveur webhook démarré sur le port ${WEBHOOK_PORT}`);
+    });
 
   } catch (error) {
     logger.error(`Erreur fatale lors du démarrage : ${error.message}`);
