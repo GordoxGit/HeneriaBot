@@ -273,6 +273,15 @@ function migrateTables() {
       logger.info('Colonnes reward ajoutées à vote_sites');
     }
 
+    const hasDetectionMethod = voteSitesInfo.some(col => col.name === 'detection_method');
+
+    if (!hasDetectionMethod) {
+      db.prepare("ALTER TABLE vote_sites ADD COLUMN detection_method TEXT DEFAULT 'polling'").run();
+      db.prepare('ALTER TABLE vote_sites ADD COLUMN webhook_id TEXT').run();
+      db.prepare('ALTER TABLE vote_sites ADD COLUMN webhook_channel_id TEXT').run();
+      logger.info('Colonnes detection_method/webhook ajoutées à vote_sites');
+    }
+
     // Migration user_votes
     const userVotesInfo = db.prepare('PRAGMA table_info(user_votes)').all();
     const hasSiteId = userVotesInfo.some(col => col.name === 'site_id');
