@@ -5,13 +5,12 @@
 
 const axios = require('axios');
 const voteHandler = require('../handlers/voteHandler');
-const logger = require('../utils/logger');
 const config = require('../config');
+const logger = require('../utils/logger');
 
 class ServeurPrivePoller {
   constructor() {
     this.token = process.env.SERVEURPRIVE_TOKEN;
-    // URL basée sur la documentation standard ou suggestion
     this.baseUrl = 'https://serveur-prive.net/api/v1';
     this.interval = null;
     this.lastCheck = Date.now();
@@ -21,11 +20,11 @@ class ServeurPrivePoller {
    * Démarre le polling (toutes les 2 minutes)
    */
   start() {
-    console.log('[Serveur-prive.net] 🚀 Démarrage du service de polling...');
-    console.log(`[Serveur-prive.net] Token: ${this.token ? '✅ Configuré' : '❌ Manquant'}`);
+    logger.info('[Serveur-prive.net] 🚀 Démarrage du service de polling...');
+    logger.info(`[Serveur-prive.net] Token: ${this.token ? '✅ Configuré' : '❌ Manquant'}`);
 
     if (!this.token) {
-      console.warn('[Serveur-prive.net] Service non démarré: SERVEURPRIVE_TOKEN manquant');
+      logger.warn('[Serveur-prive.net] Service non démarré: SERVEURPRIVE_TOKEN manquant');
       return;
     }
 
@@ -53,17 +52,12 @@ class ServeurPrivePoller {
    */
   async checkVotes() {
     try {
-      // Note: L'endpoint exact dépend de la documentation officielle.
-      // On suppose une structure standard ici.
+      // Endpoint selon ticket #023: GET https://serveur-prive.net/api/v1/servers/TOKEN/votes
       const response = await axios.get(
-        `${this.baseUrl}/votes`,
+        `${this.baseUrl}/servers/${this.token}/votes`,
         {
           headers: {
-            'Authorization': `Bearer ${this.token}`,
             'Accept': 'application/json'
-          },
-          params: {
-            since: this.lastCheck
           }
         }
       );
@@ -93,7 +87,7 @@ class ServeurPrivePoller {
     try {
       const { username, voted_at, created_at, id, vote_id } = voteData;
 
-      const guildId = config.guildId;
+      const guildId = config.guildId || process.env.GUILD_ID;
       if (!guildId) return;
 
       // 1. Essayer de récupérer l'ID Discord directement
@@ -115,7 +109,11 @@ class ServeurPrivePoller {
 
       // Déterminer le timestamp
       let timestamp = Date.now();
-      if (voted_at) timestamp = voted_at * 1000; // UNIX timestamp (seconds)
+      if (voted_at) {
+        // Le format peut être timestamp (s) ou string
+        if (typeof voted_at === 'number') timestamp = voted_at * 1000;
+        else timestamp = new Date(voted_at).getTime();
+      }
       else if (created_at) timestamp = new Date(created_at).getTime();
 
       // Construire un ID unique pour éviter les doublons
@@ -129,6 +127,8 @@ class ServeurPrivePoller {
         username: username,
         votedAt: timestamp
       }, 'api_polling');
+
+      logger.success(`[Serveur-prive.net] ✅ Vote traité: ${username}`);
 
     } catch (error) {
       logger.error(`[Serveur-prive.net] Erreur traitement vote: ${error.message}`);

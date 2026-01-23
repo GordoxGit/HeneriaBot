@@ -49,12 +49,10 @@ async function init() {
     voteHandler.init(client);
 
     // Services de polling
-    const hytaleGamePoller = require('./services/hytaleGamePoller');
     const serveurPrivePoller = require('./services/serveurPrivePoller');
     const topServeursPoller = require('./services/topServeursPoller');
 
     client.once('clientReady', () => {
-      hytaleGamePoller.start();
       serveurPrivePoller.start();
       topServeursPoller.start();
     });
@@ -90,7 +88,6 @@ process.on('uncaughtException', (error) => {
 
 process.on('SIGINT', () => {
   logger.info('Arrêt du bot...');
-  require('./services/hytaleGamePoller').stop();
   require('./services/serveurPrivePoller').stop();
   require('./services/topServeursPoller').stop();
   db.close();

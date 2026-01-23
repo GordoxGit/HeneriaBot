@@ -68,36 +68,30 @@ class VoteHandler {
    * @returns {string|null} Discord ID ou null
    */
   resolveUsernameToDiscordId(username, siteName, guildId) {
-    // 1. Chercher tous les codes potentiels dans le username
-    const matches = [...username.matchAll(/([A-Z0-9]{6})/g)];
+    // 1. Chercher un code de vérification dans le username
+    const codeMatch = username.match(/([A-Z0-9]{6})/);
 
-    for (const match of matches) {
-      const code = match[1];
+    if (codeMatch) {
+      const code = codeMatch[1];
 
-      // Chercher une liaison en attente avec ce code
       const pendingLink = db.get(`
         SELECT user_id, site_username FROM vote_username_links
         WHERE guild_id = ? AND site_name = ? AND verification_code = ?
           AND verified = 0 AND expires_at > ?
       `, [guildId, siteName, code, Date.now()]);
 
-      if (pendingLink) {
-        // Vérifier que le username contient bien le pseudo lié
-        if (username.includes(pendingLink.site_username)) {
-          // VÉRIFICATION RÉUSSIE ! Marquer comme vérifié
-          db.run(`
-            UPDATE vote_username_links
-            SET verified = 1, verified_at = ?, verification_code = NULL
-            WHERE guild_id = ? AND site_name = ? AND verification_code = ?
-          `, [Date.now(), guildId, siteName, code]);
+      if (pendingLink && username.includes(pendingLink.site_username)) {
+        // Vérification réussie
+        db.run(`
+          UPDATE vote_username_links
+          SET verified = 1, verified_at = ?, verification_code = NULL
+          WHERE guild_id = ? AND site_name = ? AND verification_code = ?
+        `, [Date.now(), guildId, siteName, code]);
 
-          logger.success(`[Vote] ✅ Liaison vérifiée: ${pendingLink.site_username} -> ${pendingLink.user_id}`);
+        logger.success(`[Vote] ✅ Liaison vérifiée: ${pendingLink.site_username} -> ${pendingLink.user_id}`);
+        this.sendVerificationSuccessDM(pendingLink.user_id, siteName, pendingLink.site_username);
 
-          // Envoyer une confirmation en DM
-          this.sendVerificationSuccessDM(pendingLink.user_id, siteName, pendingLink.site_username);
-
-          return pendingLink.user_id;
-        }
+        return pendingLink.user_id;
       }
     }
 
