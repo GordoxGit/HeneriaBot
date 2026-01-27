@@ -15,7 +15,11 @@ class VoteHandler {
      */
     init(client) {
         this.client = client;
-        this.startPolling();
+        try {
+            this.startPolling();
+        } catch (error) {
+            logger.error(`[VoteHandler] Erreur lors du démarrage du polling: ${error.message}`);
+        }
         logger.success('[VoteHandler] Initialisé');
     }
 

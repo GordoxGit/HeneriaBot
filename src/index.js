@@ -62,6 +62,18 @@ async function init() {
 
   } catch (error) {
     logger.error(`Erreur fatale lors du démarrage : ${error.message}`);
+
+    // Si le quota de sessions Discord est épuisé, attendre le reset au lieu de crasher en boucle
+    const sessionMatch = error.message.match(/Not enough sessions remaining.*resets at (.+)/);
+    if (sessionMatch) {
+      const resetTime = new Date(sessionMatch[1]);
+      const waitMs = Math.max(resetTime.getTime() - Date.now(), 0) + 10000; // +10s de marge
+      const waitMin = Math.ceil(waitMs / 60000);
+      logger.info(`[Session] Quota de sessions épuisé. Nouvelle tentative dans ${waitMin} minute(s) (reset à ${resetTime.toISOString()})...`);
+      setTimeout(() => init(), waitMs);
+      return;
+    }
+
     process.exit(1);
   }
 }
