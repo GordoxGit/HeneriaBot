@@ -212,6 +212,18 @@ function createTables() {
         enabled INTEGER DEFAULT 1,
         UNIQUE(guild_id, reward_type)
       )`
+    },
+    {
+      name: 'user_levels',
+      sql: `CREATE TABLE IF NOT EXISTS user_levels (
+        user_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        xp INTEGER DEFAULT 0,
+        level INTEGER DEFAULT 0,
+        total_messages INTEGER DEFAULT 0,
+        last_message_timestamp INTEGER DEFAULT 0,
+        PRIMARY KEY (user_id, guild_id)
+      )`
     }
   ];
 
@@ -257,6 +269,14 @@ function createTables() {
     {
       name: 'idx_otp_expires',
       sql: `CREATE INDEX IF NOT EXISTS idx_otp_expires ON vote_otp_sessions(expires_at)`
+    },
+    {
+      name: 'idx_user_levels_guild',
+      sql: `CREATE INDEX IF NOT EXISTS idx_user_levels_guild ON user_levels(guild_id)`
+    },
+    {
+      name: 'idx_user_levels_xp',
+      sql: `CREATE INDEX IF NOT EXISTS idx_user_levels_xp ON user_levels(guild_id, xp DESC)`
     }
   ];
 

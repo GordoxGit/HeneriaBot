@@ -1,7 +1,7 @@
 # 📋 Contexte du Projet HeneriaBot
 
-**Date de mise à jour :** 2026-01-27 (Mise à jour technique)
-**État actuel :** Bot en ligne, incident critique identifié - solution documentée
+**Date de mise à jour :** 2026-01-27 (Sprint 2.3 - Gamification)
+**État actuel :** Développement système de niveaux et XP
 
 ---
 
@@ -192,6 +192,75 @@ maintenance/
 
 ---
 
+## 🎮 Sprint 2.3 - Système de Gamification
+
+**Ticket :** SPRINT 2.3 - SYSTÈME DE NIVEAUX, XP ET RANK CARD
+**Priorité :** P1 - FEATURE MAJEURE
+**Status :** En cours de développement
+
+### Objectifs
+
+Implémentation complète d'un système de progression utilisateur basé sur :
+- Attribution automatique d'XP pour chaque message
+- Système de niveaux avec formule mathématique
+- Commande /rank avec génération d'image (Canvas)
+- Classement des utilisateurs par serveur
+
+### Composants Implémentés
+
+#### 1. Base de Données
+- **Table :** `user_levels`
+- **Colonnes :**
+  - `user_id` (TEXT, NOT NULL)
+  - `guild_id` (TEXT, NOT NULL)
+  - `xp` (INTEGER, Default 0)
+  - `level` (INTEGER, Default 0)
+  - `total_messages` (INTEGER, Default 0)
+  - `last_message_timestamp` (INTEGER, Default 0)
+  - PRIMARY KEY: (user_id, guild_id)
+
+#### 2. Système de Calcul XP
+- **Fichier :** `src/utils/levelSystem.js`
+- **Formule XP requis :** `5 * (niveau^2) + 50 * niveau + 100`
+- **Gain XP par message :** 15-25 XP aléatoire
+- **Cooldown :** 60 secondes entre chaque gain d'XP
+
+#### 3. Event MessageCreate
+- **Fichier :** `src/events/messageCreate.js`
+- **Fonctionnalités :**
+  - Détection automatique des messages non-bot
+  - Vérification du cooldown
+  - Attribution d'XP aléatoire
+  - Détection de level up automatique
+  - Notification embed en cas de montée de niveau
+
+#### 4. Commande /rank
+- **Fichier :** `src/commands/levels/rank.js`
+- **Rendu Canvas :** Rank Card PNG avec:
+  - Avatar utilisateur
+  - Pseudo et niveau
+  - Barre de progression XP
+  - Rang serveur (#position)
+  - Design aux couleurs Heneria
+
+### Fichiers Impactés
+
+```
+src/
+├── database/db.js                 # Ajout table user_levels
+├── events/messageCreate.js        # NOUVEAU - Attribution XP
+├── commands/levels/rank.js        # NOUVEAU - Rank card
+└── utils/levelSystem.js           # NOUVEAU - Utilitaires calcul
+```
+
+### Dépendances Utilisées
+
+- `better-sqlite3` - Stockage BDD
+- `canvas` - Génération image rank card
+- `discord.js` - Framework bot
+
+---
+
 **Dernière mise à jour :** 2026-01-27 par Claude
-**Branch :** `claude/fix-db-schema-column-crk8U`
-**Ticket :** P0 - Migration manuelle schéma BDD (missing column)
+**Branch :** `claude/add-level-xp-system-4rrOO`
+**Ticket :** SPRINT 2.3 - Système de niveaux, XP et Rank Card
