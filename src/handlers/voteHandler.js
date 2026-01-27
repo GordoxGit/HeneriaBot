@@ -81,7 +81,7 @@ class VoteHandler {
         for (const session of sessions) {
             try {
                 const response = await fetch(
-                    `${site.api_base_url}/votes/otp/${session.otp_token}`,
+                    `${site.api_base_url}/votes/${session.otp_token}`,
                     { headers: { 'Accept': 'application/json' } }
                 );
 
