@@ -1,7 +1,7 @@
 # 📋 Contexte du Projet HeneriaBot
 
-**Date de mise à jour :** 2026-01-27
-**État actuel :** Bot en ligne, incident critique identifié et résolu
+**Date de mise à jour :** 2026-01-27 (Mise à jour technique)
+**État actuel :** Bot en ligne, incident critique identifié - solution documentée
 
 ---
 
@@ -33,6 +33,29 @@ Le schéma de la base de données n'est pas synchronisé avec le code source act
 - **Code actuel** (`src/database/db.js:142`) : Définit la table `vote_sites` avec la colonne `slug`
 - **Base de données existante** : Contient une ancienne version de la table sans la colonne `slug`
 - **Conséquence** : Le code tente d'accéder à `site.slug` (lignes 46, 57, 59, 63 de `vote.js`), provoquant une erreur SQLite
+
+#### Explication Technique
+
+**Pourquoi CREATE TABLE IF NOT EXISTS ne résout pas le problème :**
+
+L'instruction SQL `CREATE TABLE IF NOT EXISTS` utilisée dans `src/database/db.js:138-155` :
+- Crée la table uniquement si elle n'existe pas
+- **Ne modifie JAMAIS** une table existante
+- **N'ajoute pas** les colonnes manquantes aux tables anciennes
+
+**État du système de migration :**
+
+La fonction `migrateTables()` dans `src/database/db.js:276-278` est actuellement vide :
+```javascript
+function migrateTables() {
+  // Pas de migrations pour le moment
+}
+```
+
+Cette absence de logique de migration automatique explique pourquoi :
+- Les tables créées avec une ancienne version du code restent figées
+- L'ajout de nouvelles colonnes dans le code ne se propage pas à la base existante
+- Une intervention manuelle est nécessaire pour synchroniser le schéma
 
 #### Tables Affectées
 
@@ -138,6 +161,17 @@ maintenance/
 
 ## 📊 Historique des Modifications
 
+### 2026-01-27 - Mise à jour Documentation Technique
+
+- **Contexte :** Ticket P0 - Migration manuelle schéma BDD (missing column)
+- **Ajouts :**
+  - Explication détaillée de la limitation `CREATE TABLE IF NOT EXISTS`
+  - Documentation de l'état vide de la fonction `migrateTables()`
+  - Clarification de la nécessité d'intervention manuelle
+- **Fichiers modifiés :**
+  - `pwd.md` (ajout section "Explication Technique")
+- **Statut :** Documentation complétée
+
 ### 2026-01-27 - Résolution Incident Vote
 
 - **Problème :** `SqliteError: no such column: slug`
@@ -159,4 +193,5 @@ maintenance/
 ---
 
 **Dernière mise à jour :** 2026-01-27 par Claude
-**Branch :** `claude/update-pwd-context-nlF3J`
+**Branch :** `claude/fix-db-schema-column-crk8U`
+**Ticket :** P0 - Migration manuelle schéma BDD (missing column)
