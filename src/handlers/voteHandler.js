@@ -110,7 +110,7 @@ class VoteHandler {
     }
 
     /**
-     * Poll sites avec système check (hytale-servs.fr)
+     * Poll sites avec système check (hytale-servs.fr, top-serveurs.net)
      */
     async pollCheckSite(site) {
         // Récupérer les utilisateurs qui ont utilisé /vote récemment
@@ -122,34 +122,99 @@ class VoteHandler {
 
         for (const { user_id } of recentUsers) {
             try {
-                const response = await fetch(
-                    `${site.api_base_url}/vote-check?api_key=${site.api_token}&externalId=${user_id}`,
-                    { headers: { 'Accept': 'application/json' } }
-                );
-
-                const data = await response.json();
-
-                if (data.ok && data.canClaim) {
-                    // Vote détecté et peut être claim
-                    await this.processVote({
-                        userId: user_id,
-                        guildId: site.guild_id,
-                        siteSlug: site.slug,
-                        externalVoteId: `${site.slug}-${data.vote.id}`,
-                        votedAt: new Date(data.vote.votedAt).getTime(),
-                        method: 'polling'
-                    });
-
-                    // Claim le vote
-                    await fetch(`${site.api_base_url}/vote-claim?api_key=${site.api_token}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ externalId: user_id })
-                    });
+                // Top-Serveurs utilise une API différente
+                if (site.slug === 'top-serveurs') {
+                    await this.pollTopServeurs(site, user_id);
+                } else {
+                    // Hytale-Servs et autres sites compatibles
+                    await this.pollHytaleServs(site, user_id);
                 }
             } catch (error) {
                 logger.debug(`[VoteHandler] Check échoué pour ${user_id}: ${error.message}`);
             }
+        }
+    }
+
+    /**
+     * Poll Top-Serveurs avec vérification par username
+     */
+    async pollTopServeurs(site, userId) {
+        if (!this.client) {
+            logger.warn('[VoteHandler] Client Discord non disponible pour Top-Serveurs');
+            return;
+        }
+
+        try {
+            // Récupérer l'utilisateur Discord pour obtenir son username
+            const user = await this.client.users.fetch(userId);
+            if (!user) {
+                logger.warn(`[VoteHandler] Utilisateur ${userId} introuvable`);
+                return;
+            }
+
+            // Construire l'URL de l'API Top-Serveurs
+            // Format: https://api.top-serveurs.net/v1/servers/{token}/votes/check?username={username}
+            const baseUrl = site.api_base_url || 'https://api.top-serveurs.net';
+            const apiUrl = `${baseUrl}/v1/servers/${site.api_token}/votes/check?username=${encodeURIComponent(user.username)}`;
+
+            const response = await fetch(apiUrl, {
+                headers: { 'Accept': 'application/json' }
+            });
+
+            if (!response.ok) {
+                logger.debug(`[VoteHandler] Top-Serveurs API erreur ${response.status} pour ${user.username}`);
+                return;
+            }
+
+            const data = await response.json();
+
+            // Top-Serveurs retourne { success: true, hasVoted: true, voteId: "..." }
+            if (data.success && data.hasVoted) {
+                // Vote détecté !
+                await this.processVote({
+                    userId: userId,
+                    guildId: site.guild_id,
+                    siteSlug: site.slug,
+                    externalVoteId: `top-serveurs-${data.voteId || Date.now()}`,
+                    votedAt: data.votedAt ? new Date(data.votedAt).getTime() : Date.now(),
+                    method: 'polling'
+                });
+
+                logger.success(`[VoteHandler] Vote Top-Serveurs détecté pour ${user.username}`);
+            }
+        } catch (error) {
+            logger.debug(`[VoteHandler] Erreur Top-Serveurs pour ${userId}: ${error.message}`);
+        }
+    }
+
+    /**
+     * Poll Hytale-Servs avec vérification par externalId
+     */
+    async pollHytaleServs(site, userId) {
+        const response = await fetch(
+            `${site.api_base_url}/vote-check?api_key=${site.api_token}&externalId=${userId}`,
+            { headers: { 'Accept': 'application/json' } }
+        );
+
+        const data = await response.json();
+
+        if (data.ok && data.canClaim) {
+            // Vote détecté et peut être claim
+            await this.processVote({
+                userId: userId,
+                guildId: site.guild_id,
+                siteSlug: site.slug,
+                externalVoteId: `${site.slug}-${data.vote.id}`,
+                votedAt: new Date(data.vote.votedAt).getTime(),
+                method: 'polling'
+            });
+
+            // Claim le vote
+            await fetch(`${site.api_base_url}/vote-claim?api_key=${site.api_token}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ externalId: userId })
+            });
         }
     }
 
