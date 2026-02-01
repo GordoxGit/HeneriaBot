@@ -16,7 +16,7 @@ async function logAction(guild, targetUser, moderator, type, reason, duration = 
   const timestamp = Math.floor(Date.now() / 1000);
   let expiresAt = null;
 
-  if (type === 'TEMPBAN' && duration) {
+  if ((type === 'TEMPBAN' || type === 'MUTE') && duration) {
     expiresAt = timestamp + duration;
   }
 
@@ -36,7 +36,7 @@ async function logAction(guild, targetUser, moderator, type, reason, duration = 
   // For UNBAN, user might not share server anymore so DM might fail, but we try if we can.
   // Actually, for KICK/BAN/TEMPBAN we should definitely try.
 
-  if (type !== 'UNBAN') {
+  if (!['UNBAN', 'UNMUTE', 'CLEARWARNS'].includes(type)) {
     try {
       const dmEmbed = new EmbedBuilder()
         .setTitle(`Sanction : ${type}`)
@@ -92,10 +92,14 @@ function getTypeColor(type) {
   switch (type) {
     case 'BAN':
     case 'TEMPBAN':
+    case 'MUTE':
       return COLORS.ERROR;
     case 'KICK':
+    case 'WARN':
       return COLORS.WARNING;
     case 'UNBAN':
+    case 'UNMUTE':
+    case 'CLEARWARNS':
       return COLORS.SUCCESS;
     default:
       return COLORS.INFO;
