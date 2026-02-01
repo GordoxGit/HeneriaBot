@@ -61,6 +61,20 @@
 
 ---
 
+## ⚠️ Incidents Actifs (En cours de résolution)
+
+### Incident 1 : Récompenses de Niveaux (Critique)
+- **Problème :** Le passage de niveau est détecté (l'XP monte), mais le rôle configuré dans `level_rewards` n'est pas attribué à l'utilisateur.
+- **Diagnostic :** La logique de récupération et d'attribution du rôle dans `messageCreate.js` est potentiellement défaillante ou manque de robustesse (cache, permissions).
+- **Correctif prévu :** Injection/Renforcement de la logique SELECT et attribution via API avec gestion d'erreurs explicite.
+
+### Incident 2 : Warning Autorole (Mineur)
+- **Problème :** Avertissement "Supplying 'ephemeral' is deprecated" lors de l'utilisation de `/autorole`.
+- **Diagnostic :** Utilisation de l'ancienne syntaxe `ephemeral: true`.
+- **Correctif prévu :** Passage à `flags: MessageFlags.Ephemeral` (Discord.js v14+).
+
+---
+
 ## ⚠️ Incident Critique - Système de Vote (Historique)
 
 ### Description de l'Incident
@@ -251,10 +265,9 @@ maintenance/
 
 ## 🚀 Prochaines Étapes
 
-1. Exécuter le script de maintenance (voir procédure ci-dessus)
-2. Valider le bon fonctionnement de `/vote`
-3. Reconfigurer les sites de vote via les commandes administrateur
-4. Monitorer les logs pour détecter d'éventuels autres problèmes
+1. Résoudre l'incident d'attribution de rôle (messageCreate.js)
+2. Corriger les avertissements deprecated (autorole.js)
+3. Valider le fonctionnement global
 
 ---
 

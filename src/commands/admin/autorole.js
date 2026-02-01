@@ -6,7 +6,8 @@ const {
   StringSelectMenuBuilder,
   ButtonStyle,
   StringSelectMenuOptionBuilder,
-  EmbedBuilder
+  EmbedBuilder,
+  MessageFlags
 } = require('discord.js');
 const db = require('../../database/db');
 const logger = require('../../utils/logger');
@@ -99,15 +100,15 @@ async function handleCreate(interaction) {
 
     await interaction.reply({
       embeds: [successEmbed(`Panneau créé avec succès ! **ID: ${panel.id}**\nUtilisez \`/autorole add panel_id:${panel.id} ...\` pour ajouter des rôles.`)],
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
 
   } catch (error) {
     logger.error(`Erreur /autorole create: ${error.message}`);
     if (interaction.replied || interaction.deferred) {
-        await interaction.followUp({ embeds: [errorEmbed('Une erreur est survenue.')], ephemeral: true });
+        await interaction.followUp({ embeds: [errorEmbed('Une erreur est survenue.')], flags: MessageFlags.Ephemeral });
     } else {
-        await interaction.reply({ embeds: [errorEmbed('Une erreur est survenue.')], ephemeral: true });
+        await interaction.reply({ embeds: [errorEmbed('Une erreur est survenue.')], flags: MessageFlags.Ephemeral });
     }
   }
 }
