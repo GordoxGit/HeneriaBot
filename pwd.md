@@ -298,3 +298,30 @@ maintenance/
 4.  **Validation Technique**
     *   Hiérarchie des rôles.
     *   Gestion des bans temporaires (révocation automatique).
+
+## 🛡️ Sprint 2.3 (Addendum 2) : Gestion des Mutes et Avertissements
+
+**Objectif :** Implémentation des sanctions temporaires (Timeout) et du système d'avertissements cumulatifs.
+
+### Spécifications Techniques
+
+1.  **Base de Données**
+    *   Utilisation de la table `infractions`.
+    *   Types : `MUTE` (pour Timeout), `WARN` (pour Avertissement).
+
+2.  **Gestion des Mutes (Timeout)**
+    *   `/mute` : Application timeout Discord + Log DB + DM.
+    *   `/unmute` : Retrait timeout + Update DB (active=0) + Log.
+    *   Expiration : Retrait automatique via Discord, nettoyage DB nécessaire.
+
+3.  **Système d'Avertissements (Warns)**
+    *   `/warn` : Log DB (active=1) + DM.
+    *   `/warnings` : Liste les avertissements actifs.
+    *   `/clearwarns` : Désactive tous les avertissements (active=0).
+
+4.  **Fichiers Impactés**
+    *   `src/commands/moderation/mute.js`
+    *   `src/commands/moderation/unmute.js`
+    *   `src/commands/moderation/warn.js`
+    *   `src/commands/moderation/warnings.js`
+    *   `src/commands/moderation/clearwarns.js`

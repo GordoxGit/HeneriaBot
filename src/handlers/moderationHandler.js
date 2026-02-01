@@ -22,6 +22,18 @@ function init(client) {
 async function checkExpiredBans(client) {
   const now = Math.floor(Date.now() / 1000);
 
+  // Expire Mutes (Timeouts) - Cleanup DB only (Discord handles actual unmute)
+  try {
+    db.run(
+      `UPDATE infractions
+       SET active = 0
+       WHERE type = 'MUTE' AND active = 1 AND expires_at <= ?`,
+      [now]
+    );
+  } catch (err) {
+    logger.error(`Erreur lors du nettoyage des mutes expirés : ${err.message}`);
+  }
+
   // Find expired active tempbans
   const expiredBans = db.all(
     `SELECT * FROM infractions
