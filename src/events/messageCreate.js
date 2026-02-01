@@ -68,21 +68,32 @@ module.exports = {
       if (newLevel > oldLevel) {
         // Vérification des récompenses de rôle
         let rewardText = '';
-        const reward = db.get(
-          'SELECT role_id FROM level_rewards WHERE guild_id = ? AND level = ?',
-          [guildId, newLevel]
-        );
 
-        if (reward) {
-          try {
-            const role = message.guild.roles.cache.get(reward.role_id);
-            if (role) {
-              await message.member.roles.add(role);
-              rewardText = `\n\n🎁 **Récompense débloquée :** ${role}`;
+        try {
+          const reward = db.get(
+            'SELECT role_id FROM level_rewards WHERE guild_id = ? AND level = ?',
+            [guildId, newLevel]
+          );
+
+          if (reward) {
+            try {
+              // Récupération sécurisée du membre et du rôle
+              const member = await message.guild.members.fetch(userId);
+              const role = await message.guild.roles.fetch(reward.role_id);
+
+              if (role && member) {
+                await member.roles.add(role);
+                rewardText = `\n\nBravo, tu gagnes le rôle ${role} !`;
+                logger.info(`[INFO] Rôle ${role.name} donné à User ${member.user.tag}`);
+              } else {
+                logger.warn(`Rôle ou Membre introuvable pour la récompense (RoleID: ${reward.role_id})`);
+              }
+            } catch (error) {
+              logger.error(`[ERROR] Impossible de donner le rôle (Permissions): ${error.message}`);
             }
-          } catch (error) {
-            logger.warn(`Erreur attribution rôle reward (User: ${userId}, Role: ${reward.role_id}): ${error.message}`);
           }
+        } catch (dbError) {
+          logger.error(`Erreur DB Level Reward: ${dbError.message}`);
         }
 
         const embed = new EmbedBuilder()
