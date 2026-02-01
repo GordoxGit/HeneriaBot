@@ -10,6 +10,7 @@ const db = require('./database/db');
 const loadCommands = require('./handlers/commandHandler');
 const loadEvents = require('./handlers/eventHandler');
 const voteHandler = require('./handlers/voteHandler');
+const moderationHandler = require('./handlers/moderationHandler');
 const voteWebhookRoutes = require('./api/webhooks/voteWebhook');
 
 // Initialisation du client Discord avec les intents nécessaires
@@ -49,6 +50,9 @@ async function init() {
 
     // Initialisation du système de votes
     voteHandler.init(client);
+
+    // Initialisation du système de modération
+    moderationHandler.init(client);
 
     // Initialisation du serveur API (Webhooks)
     const app = express();
