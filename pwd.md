@@ -206,6 +206,26 @@ maintenance/
   - `pwd.md` (ce fichier)
 - **Statut :** Résolu, en attente de validation
 
+### 2026-01-27 - Sprint 2.3 Continued
+
+**Nouvelles Fonctionnalités :**
+- Outils de gestion d'expérience (Admin)
+- Classement global (/leaderboard)
+- Récompenses de rôles par niveau
+
+**Fichiers impactés :**
+- `src/commands/levels/leaderboard.js` (Nouveau)
+- `src/commands/admin/managexp.js` (Nouveau)
+- `src/commands/admin/levelreward.js` (Nouveau)
+- `src/events/messageCreate.js` (Modifié)
+- `src/database/db.js` (Modifié - Nouvelle table `level_rewards`)
+
+**Notes Techniques :**
+- Ajout de la table `level_rewards` avec contrainte unique `(guild_id, level)`.
+- `/leaderboard` avec pagination via `ComponentCollector`.
+- `/managexp` doit recalculer les niveaux pour maintenir la cohérence XP/Level.
+- `/levelreward` permet la configuration des rôles attribués au Level Up.
+
 ---
 
 ## 🚀 Prochaines Étapes

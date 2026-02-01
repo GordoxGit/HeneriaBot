@@ -66,10 +66,29 @@ module.exports = {
 
       // Notification de Level Up
       if (newLevel > oldLevel) {
+        // Vérification des récompenses de rôle
+        let rewardText = '';
+        const reward = db.get(
+          'SELECT role_id FROM level_rewards WHERE guild_id = ? AND level = ?',
+          [guildId, newLevel]
+        );
+
+        if (reward) {
+          try {
+            const role = message.guild.roles.cache.get(reward.role_id);
+            if (role) {
+              await message.member.roles.add(role);
+              rewardText = `\n\n🎁 **Récompense débloquée :** ${role}`;
+            }
+          } catch (error) {
+            logger.warn(`Erreur attribution rôle reward (User: ${userId}, Role: ${reward.role_id}): ${error.message}`);
+          }
+        }
+
         const embed = new EmbedBuilder()
           .setColor(COLORS.SUCCESS)
           .setTitle('🎉 Level Up !')
-          .setDescription(`Félicitations ${message.author} ! Tu es passé au **Niveau ${newLevel}** !`)
+          .setDescription(`Félicitations ${message.author} ! Tu es passé au **Niveau ${newLevel}** !${rewardText}`)
           .setFooter({ text: 'Continue comme ça !' });
 
         try {

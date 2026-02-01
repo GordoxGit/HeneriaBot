@@ -80,6 +80,16 @@ function createTables() {
       )`
     },
     {
+      name: 'level_rewards',
+      sql: `CREATE TABLE IF NOT EXISTS level_rewards (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        level INTEGER NOT NULL,
+        role_id TEXT NOT NULL,
+        UNIQUE(guild_id, level)
+      )`
+    },
+    {
       name: 'settings',
       sql: `CREATE TABLE IF NOT EXISTS settings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
