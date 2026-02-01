@@ -274,3 +274,27 @@ maintenance/
 **Dernière mise à jour :** 2026-01-27 par Claude
 **Branch :** `claude/fix-db-schema-column-crk8U`
 **Ticket :** P0 - Migration manuelle schéma BDD (missing column)
+
+## 🛡️ Sprint 2.3 (Addendum) : Modération Punitive
+
+**Objectif :** Implémentation des outils de modération punitive et de la traçabilité des sanctions.
+
+### Spécifications Techniques
+
+1.  **Base de Données (Schema)**
+    *   Table `infractions` : Trace toutes les sanctions (Kick, Ban, Tempban, Unban).
+    *   Champs : `id`, `guild_id`, `user_id`, `moderator_id`, `type`, `reason`, `created_at`, `expires_at`, `active`.
+
+2.  **Logique de Modération & Logs**
+    *   **Envoi DM** : Notification à l'utilisateur sanctionné.
+    *   **Logs Serveur** : Embed dans le salon défini (`mod_log_channel`).
+    *   **Persistance** : Enregistrement dans la DB.
+
+3.  **Commandes de Sanction**
+    *   `/kick` : Expulsion + Log.
+    *   `/ban` : Bannissement (définitif ou temporaire) + Log.
+    *   `/unban` : Révoquer bannissement + Log + Update historique.
+
+4.  **Validation Technique**
+    *   Hiérarchie des rôles.
+    *   Gestion des bans temporaires (révocation automatique).

@@ -256,6 +256,20 @@ function createTables() {
         label TEXT,
         FOREIGN KEY (panel_id) REFERENCES autorole_panels(id) ON DELETE CASCADE
       )`
+    },
+    {
+      name: 'infractions',
+      sql: `CREATE TABLE IF NOT EXISTS infractions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        moderator_id TEXT NOT NULL,
+        type TEXT NOT NULL,
+        reason TEXT,
+        created_at INTEGER,
+        expires_at INTEGER,
+        active INTEGER DEFAULT 1
+      )`
     }
   ];
 
@@ -309,6 +323,14 @@ function createTables() {
     {
       name: 'idx_autorole_entries_panel',
       sql: `CREATE INDEX IF NOT EXISTS idx_autorole_entries_panel ON autorole_entries(panel_id)`
+    },
+    {
+      name: 'idx_infractions_active',
+      sql: `CREATE INDEX IF NOT EXISTS idx_infractions_active ON infractions(active, type, expires_at)`
+    },
+    {
+      name: 'idx_infractions_user',
+      sql: `CREATE INDEX IF NOT EXISTS idx_infractions_user ON infractions(user_id, guild_id)`
     }
   ];
 
