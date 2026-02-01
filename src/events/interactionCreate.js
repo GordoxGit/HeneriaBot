@@ -3,8 +3,8 @@
  * Gère les interactions (commandes slash)
  */
 
-const { Events } = require('discord.js');
-const { errorEmbed } = require('../utils/embedBuilder');
+const { Events, PermissionFlagsBits } = require('discord.js');
+const { errorEmbed, successEmbed } = require('../utils/embedBuilder');
 const {
   createTicket,
   claimTicket,
@@ -21,7 +21,13 @@ module.exports = {
    * @param {import('discord.js').Interaction} interaction
    */
   async execute(interaction) {
-    // Gestion des boutons
+    // Gestion Autorole (Boutons et Menus)
+    if ((interaction.isButton() || interaction.isStringSelectMenu()) && interaction.customId.startsWith('autorole_')) {
+        await handleAutoroleInteraction(interaction);
+        return;
+    }
+
+    // Gestion des boutons tickets
     if (interaction.isButton()) {
       if (interaction.customId.startsWith('ticket_')) {
         const parts = interaction.customId.split('_');
@@ -95,3 +101,65 @@ module.exports = {
     }
   },
 };
+
+/**
+ * Gère les interactions liées au système d'auto-rôle
+ * @param {import('discord.js').Interaction} interaction
+ */
+async function handleAutoroleInteraction(interaction) {
+    try {
+        await interaction.deferReply({ ephemeral: true });
+
+        let roleId;
+
+        // Identification du rôle
+        if (interaction.isButton()) {
+            // customId: autorole_{roleId}
+            roleId = interaction.customId.split('_')[1];
+        } else if (interaction.isStringSelectMenu()) {
+            // values: [roleId]
+            roleId = interaction.values[0];
+        }
+
+        if (!roleId) {
+            return interaction.editReply({ embeds: [errorEmbed('Impossible d\'identifier le rôle cible.')] });
+        }
+
+        // Vérifications
+        const guild = interaction.guild;
+        const member = interaction.member; // Le membre qui a cliqué
+        const role = await guild.roles.fetch(roleId);
+
+        if (!role) {
+            return interaction.editReply({ embeds: [errorEmbed('Ce rôle n\'existe plus sur le serveur.')] });
+        }
+
+        // Vérification des permissions du bot
+        const botMember = await guild.members.fetchMe();
+        if (!botMember.permissions.has(PermissionFlagsBits.ManageRoles)) {
+            return interaction.editReply({ embeds: [errorEmbed('Je n\'ai pas la permission de gérer les rôles.')] });
+        }
+
+        if (role.position >= botMember.roles.highest.position) {
+            return interaction.editReply({ embeds: [errorEmbed('Je ne peux pas gérer ce rôle car il est supérieur ou égal au mien.')] });
+        }
+
+        // Action Toggle
+        if (member.roles.cache.has(role.id)) {
+            await member.roles.remove(role);
+            await interaction.editReply({ embeds: [successEmbed(`Le rôle **${role.name}** vous a été retiré ❌`)] });
+        } else {
+            await member.roles.add(role);
+            await interaction.editReply({ embeds: [successEmbed(`Le rôle **${role.name}** vous a été ajouté ✅`)] });
+        }
+
+        // Si c'est un SelectMenu, on pourrait vouloir reset la sélection, mais on ne peut pas facilement éditer le message public sans reconstruire le menu sans sélection par défaut.
+        // Comme le message est public, la sélection est "User-specific" dans l'UI Discord (parfois), mais souvent elle persiste.
+        // Pour "reset" visuellement, il faudrait updateMessage, mais ça affecte tout le monde.
+        // On laisse comme ça pour l'instant.
+
+    } catch (error) {
+        logger.error(`Erreur Autorole Interaction: ${error.message}`);
+        await interaction.editReply({ embeds: [errorEmbed('Une erreur est survenue lors de la modification de vos rôles.')] });
+    }
+}

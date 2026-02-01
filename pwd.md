@@ -30,6 +30,27 @@
 
 ---
 
+## 🔘 Sprint 2.3 (Addendum) : Système d'Autorole
+
+**Objectif :** Création de panneaux interactifs pour l'attribution de rôles.
+
+### Spécifications Techniques
+
+1.  **Base de Données**
+    *   `autorole_panels`: Conteneur du panel (Message ID, Channel ID, Titre, Type).
+    *   `autorole_entries`: Options du panel (Role ID, Label, Emoji).
+
+2.  **Commandes (`/autorole`)**
+    *   `create` : Crée un nouveau panel (Boutons ou Menu Déroulant).
+    *   `add` : Ajoute un rôle à un panel existant et met à jour le message.
+
+3.  **Interactions**
+    *   Gestion des clics boutons et sélections menus.
+    *   Toggle : Ajoute le rôle s'il est absent, le retire s'il est présent.
+    *   Sécurité : Vérification des permissions du bot.
+
+---
+
 ## 🤖 État du Bot
 
 - **Statut :** ✅ En ligne (démarrage réussi)

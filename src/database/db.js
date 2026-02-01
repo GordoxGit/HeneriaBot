@@ -234,6 +234,28 @@ function createTables() {
         enabled INTEGER DEFAULT 1,
         UNIQUE(guild_id, reward_type)
       )`
+    },
+    {
+      name: 'autorole_panels',
+      sql: `CREATE TABLE IF NOT EXISTS autorole_panels (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        channel_id TEXT NOT NULL,
+        message_id TEXT NOT NULL,
+        title TEXT,
+        type TEXT NOT NULL
+      )`
+    },
+    {
+      name: 'autorole_entries',
+      sql: `CREATE TABLE IF NOT EXISTS autorole_entries (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        panel_id INTEGER NOT NULL,
+        role_id TEXT NOT NULL,
+        emoji TEXT,
+        label TEXT,
+        FOREIGN KEY (panel_id) REFERENCES autorole_panels(id) ON DELETE CASCADE
+      )`
     }
   ];
 
@@ -283,6 +305,10 @@ function createTables() {
     {
       name: 'idx_otp_expires',
       sql: `CREATE INDEX IF NOT EXISTS idx_otp_expires ON vote_otp_sessions(expires_at)`
+    },
+    {
+      name: 'idx_autorole_entries_panel',
+      sql: `CREATE INDEX IF NOT EXISTS idx_autorole_entries_panel ON autorole_entries(panel_id)`
     }
   ];
 
