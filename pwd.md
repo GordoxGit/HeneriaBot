@@ -1,7 +1,32 @@
 # 📋 Contexte du Projet HeneriaBot
 
-**Date de mise à jour :** 2026-01-27 (Mise à jour technique)
-**État actuel :** Bot en ligne, incident critique identifié - solution documentée
+**Date de mise à jour :** 2026-01-27 (Sprint 2.3 Started)
+**Sprint Actuel :** 2.3 - Engagement Communautaire
+**Priorité :** P1 - FEATURE MAJEURE
+
+---
+
+## 🚀 Sprint 2.3 : Système de Niveaux, XP et Rank Card
+
+**Objectif :** Implémentation du système de progression (Gamification).
+
+### Spécifications Techniques
+
+1.  **Base de Données (`user_levels`)**
+    *   `user_id` (TEXT), `guild_id` (TEXT) - PK
+    *   `xp` (INT), `level` (INT)
+    *   `total_messages` (INT)
+    *   `last_message_timestamp` (INT) - Cooldown management
+
+2.  **Gain d'XP (`messageCreate.js`)**
+    *   Ignore bots/system.
+    *   Cooldown: 60s.
+    *   Gain: 15-25 XP.
+    *   Level Up Formula: `XP_Requis = 5 * (niveau ^ 2) + 50 * niveau + 100`
+
+3.  **Commandes (`/rank`)**
+    *   Génération d'image via `canvas`.
+    *   Affichage : Avatar, Niveau, XP/Next, Rang.
 
 ---
 
@@ -15,7 +40,7 @@
 
 ---
 
-## ⚠️ Incident Critique - Système de Vote
+## ⚠️ Incident Critique - Système de Vote (Historique)
 
 ### Description de l'Incident
 
