@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const db = require('../../database/db');
-const { logAction } = require('../../utils/modLogger');
+const { createInfraction, logToModChannel } = require('../../utils/modLogger');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -20,7 +20,6 @@ module.exports = {
     const userId = interaction.options.getString('userid');
     const reason = interaction.options.getString('reason') || 'Aucune raison spécifiée';
 
-    // Validate ID format (simple check)
     if (!/^\d{17,19}$/.test(userId)) {
       return interaction.reply({
         content: 'Format d\'ID utilisateur invalide.',
@@ -31,7 +30,6 @@ module.exports = {
     try {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-      // Check if banned
       try {
           await interaction.guild.bans.fetch(userId);
       } catch (e) {
@@ -40,11 +38,8 @@ module.exports = {
           });
       }
 
-      // Execute Unban
       const user = await interaction.guild.members.unban(userId, reason);
 
-      // Update DB: deactivate any active bans for this user in this guild
-      // (This handles previous TEMPBANs or BANs being marked inactive)
       db.run(
         `UPDATE infractions
          SET active = 0
@@ -52,9 +47,8 @@ module.exports = {
         [interaction.guild.id, userId]
       );
 
-      // Log action
-      // We pass the user object returned by unban (which is a User object)
-      await logAction(interaction.guild, user, interaction.user, 'UNBAN', reason);
+      const infractionId = createInfraction(interaction.guild, user, interaction.user, 'UNBAN', reason);
+      await logToModChannel(interaction.guild, user, interaction.user, 'UNBAN', reason, null, infractionId);
 
       return interaction.editReply({
         content: `✅ **${user.tag}** a été débanni.\nRaison : ${reason}`

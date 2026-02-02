@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
-const { logAction } = require('../../utils/modLogger');
+const { createInfraction, logToModChannel } = require('../../utils/modLogger');
+const { sendModerationDM } = require('../../utils/modUtils');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -41,11 +42,15 @@ module.exports = {
     try {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-      // Log Action (DB + DM + Channel)
-      await logAction(interaction.guild, targetUser, interaction.user, 'WARN', reason);
+      const dmResult = await sendModerationDM(targetUser, interaction.guild, 'WARN', reason);
+
+      const infractionId = createInfraction(interaction.guild, targetUser, interaction.user, 'WARN', reason);
+      await logToModChannel(interaction.guild, targetUser, interaction.user, 'WARN', reason, null, infractionId);
+
+      const dmFeedback = dmResult.sent ? '' : `\n⚠️ ${dmResult.error}`;
 
       return interaction.editReply({
-        content: `⚠️ **${targetUser.tag}** a reçu un avertissement.\nRaison : ${reason}`
+        content: `⚠️ **${targetUser.tag}** a reçu un avertissement.\nRaison : ${reason}${dmFeedback}`
       });
 
     } catch (error) {

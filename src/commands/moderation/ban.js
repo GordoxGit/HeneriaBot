@@ -1,5 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
-const { logAction } = require('../../utils/modLogger');
+const { createInfraction, logToModChannel } = require('../../utils/modLogger');
+const { sendModerationDM } = require('../../utils/modUtils');
+const { parseDuration } = require('../../utils/timeParser');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -74,20 +76,27 @@ module.exports = {
     try {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-      // Log (includes DM)
-      await logAction(interaction.guild, targetUser, interaction.user, type, reason, durationSeconds);
+      // 1. Send DM
+      const dmResult = await sendModerationDM(targetUser, interaction.guild, type, reason, durationStr);
 
-      // Execute Ban
+      // 2. Execute Ban
       await interaction.guild.members.ban(targetUser.id, {
         reason: reason,
         deleteMessageSeconds: deleteMessages ? 7 * 24 * 60 * 60 : 0
       });
 
+      // 3. Log Infraction (DB + Channel)
+      const infractionId = createInfraction(interaction.guild, targetUser, interaction.user, type, reason, durationSeconds);
+      await logToModChannel(interaction.guild, targetUser, interaction.user, type, reason, durationSeconds, infractionId);
+
+      // 4. Confirm to Moderator
       const confirmMsg = durationSeconds
         ? `✅ **${targetUser.tag}** a été banni temporairement pour ${durationStr}.\nRaison : ${reason}`
         : `✅ **${targetUser.tag}** a été banni définitivement.\nRaison : ${reason}`;
 
-      return interaction.editReply({ content: confirmMsg });
+      const dmFeedback = dmResult.sent ? '' : `\n⚠️ ${dmResult.error}`;
+
+      return interaction.editReply({ content: confirmMsg + dmFeedback });
 
     } catch (error) {
       return interaction.editReply({
@@ -96,21 +105,3 @@ module.exports = {
     }
   },
 };
-
-function parseDuration(str) {
-  if (!str) return null;
-  const regex = /^(\d+)([smhd])$/i; // case insensitive
-  const match = str.match(regex);
-  if (!match) return null;
-
-  const value = parseInt(match[1]);
-  const unit = match[2].toLowerCase();
-
-  switch(unit) {
-    case 's': return value;
-    case 'm': return value * 60;
-    case 'h': return value * 3600;
-    case 'd': return value * 86400;
-    default: return null;
-  }
-}
