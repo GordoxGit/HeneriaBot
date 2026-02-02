@@ -2,6 +2,7 @@ const { EmbedBuilder } = require('discord.js');
 const db = require('../database/db');
 const logger = require('../utils/logger');
 const { createInfraction, logToModChannel } = require('../utils/modLogger');
+const { sendSanctionEndedDM } = require('../utils/modUtils');
 const { COLORS } = require('../config/constants');
 
 const CHECK_INTERVAL = 60 * 1000; // 60 seconds
@@ -45,14 +46,7 @@ async function checkExpiredInfractions(client) {
                  }
 
                  if (target) {
-                     const dmEmbed = new EmbedBuilder()
-                        .setTitle('Sanction levée / Pardonnée')
-                        .setDescription(`Votre mute temporaire est terminé sur **${guild.name}**.`)
-                        .setColor(COLORS.SUCCESS);
-
-                     await target.send({ embeds: [dmEmbed] }).catch(() => {
-                         // Ignore DM errors (closed DMs, etc)
-                     });
+                     await sendSanctionEndedDM(target, guild, 'MUTE');
                  }
              } catch (err) {
                  logger.error(`Error processing mute expiry DM for ${mute.user_id}: ${err.message}`);
@@ -95,6 +89,10 @@ async function checkExpiredInfractions(client) {
             }
 
             try {
+                if (user) {
+                    await sendSanctionEndedDM(user, guild, 'TEMPBAN');
+                }
+
                 await guild.members.unban(ban.user_id, 'Unban automatique');
                 logger.success(`Unban automatique de ${ban.user_id}`);
 
@@ -102,13 +100,6 @@ async function checkExpiredInfractions(client) {
                     const reason = 'Unban automatique (Expiration Tempban)';
                     const infractionId = createInfraction(guild, user, client.user, 'UNBAN', reason);
                     await logToModChannel(guild, user, client.user, 'UNBAN', reason, null, infractionId);
-
-                    // Send DM
-                    const dmEmbed = new EmbedBuilder()
-                        .setTitle('Sanction levée / Pardonnée')
-                        .setDescription(`Votre bannissement temporaire est terminé sur **${guild.name}**.`)
-                        .setColor(COLORS.SUCCESS);
-                    await user.send({ embeds: [dmEmbed] }).catch(() => {});
                 }
 
             } catch (err) {
