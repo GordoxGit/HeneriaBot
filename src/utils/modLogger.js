@@ -106,4 +106,43 @@ function getTypeColor(type) {
 // Keep logAction for backward compatibility if needed, but we should refactor everything.
 // I will not export logAction to force me to refactor.
 
-module.exports = { createInfraction, logToModChannel, getTypeColor };
+/**
+ * Logs a general moderation action to the log channel.
+ * @param {Object} guild - The Discord guild object.
+ * @param {Object} moderator - The moderator performing the action.
+ * @param {string} action - The action name (e.g., "CLEAR", "LOCK", "NUKE").
+ * @param {string} description - Details about the action.
+ * @param {Object|null} channel - The specific channel affected (optional).
+ */
+async function logGeneralAction(guild, moderator, action, description, channel = null) {
+  try {
+    const setting = db.get('SELECT value FROM settings WHERE guild_id = ? AND key = ?', [guild.id, 'mod_log_channel']);
+
+    if (setting && setting.value) {
+      const logChannel = guild.channels.cache.get(setting.value);
+      if (logChannel) {
+        const logEmbed = new EmbedBuilder()
+          .setTitle(`Action : ${action}`)
+          .setColor(COLORS.INFO)
+          .addFields(
+            { name: 'Modérateur', value: `${moderator.tag} (${moderator.id})`, inline: true },
+            { name: 'Détails', value: description },
+          )
+          .setTimestamp();
+
+        if (channel) {
+             // Use splice to insert channel after Moderator but before Details if possible, or just add it.
+             // But existing addFields is sequential.
+             // Let's just add it.
+             logEmbed.spliceFields(1, 0, { name: 'Salon', value: `${channel} (${channel.name})`, inline: true });
+        }
+
+        await logChannel.send({ embeds: [logEmbed] });
+      }
+    }
+  } catch (err) {
+    logger.error(`Failed to send general log to channel: ${err.message}`);
+  }
+}
+
+module.exports = { createInfraction, logToModChannel, logGeneralAction, getTypeColor };
