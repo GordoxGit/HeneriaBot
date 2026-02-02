@@ -1,6 +1,7 @@
-const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags, EmbedBuilder } = require('discord.js');
 const db = require('../../database/db');
 const { createInfraction, logToModChannel } = require('../../utils/modLogger');
+const { COLORS } = require('../../config/constants');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -34,6 +35,17 @@ module.exports = {
         return interaction.editReply({
           content: `✅ Ce membre n'a aucun avertissement actif.`
         });
+      }
+
+      // Notification DM
+      try {
+        const dmEmbed = new EmbedBuilder()
+            .setTitle('Sanction levée / Pardonnée')
+            .setDescription(`Vos avertissements ont été retirés sur **${interaction.guild.name}**.`)
+            .setColor(COLORS.SUCCESS);
+        await targetUser.send({ embeds: [dmEmbed] });
+      } catch (err) {
+        // Ignorer si les MP sont fermés
       }
 
       const infractionId = createInfraction(interaction.guild, targetUser, interaction.user, 'CLEARWARNS', reason);
