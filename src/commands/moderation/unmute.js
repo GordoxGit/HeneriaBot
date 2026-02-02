@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags, EmbedBuilder } = require('discord.js');
 const db = require('../../database/db');
 const { createInfraction, logToModChannel } = require('../../utils/modLogger');
+const { sendSanctionEndedDM } = require('../../utils/modUtils');
 const { COLORS } = require('../../config/constants');
 
 module.exports = {
@@ -26,21 +27,11 @@ module.exports = {
     try {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
+      const target = member || targetUser;
+      await sendSanctionEndedDM(target, interaction.guild, 'MUTE');
+
       if (member) {
           await member.timeout(null, reason);
-      }
-
-      // Notification DM
-      try {
-        const dmEmbed = new EmbedBuilder()
-            .setTitle('Sanction levée / Pardonnée')
-            .setDescription(`Votre mute a été révoqué sur **${interaction.guild.name}**.`)
-            .setColor(COLORS.SUCCESS);
-        // Tenter d'envoyer au membre (si présent) ou à l'utilisateur
-        const target = member || targetUser;
-        await target.send({ embeds: [dmEmbed] });
-      } catch (err) {
-        // Ignorer si les MP sont fermés
       }
 
       db.run(

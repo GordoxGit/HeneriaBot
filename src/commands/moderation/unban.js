@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags, EmbedBuilder } = require('discord.js');
 const db = require('../../database/db');
 const { createInfraction, logToModChannel } = require('../../utils/modLogger');
+const { sendSanctionEndedDM } = require('../../utils/modUtils');
 const { COLORS } = require('../../config/constants');
 
 module.exports = {
@@ -39,18 +40,14 @@ module.exports = {
           });
       }
 
-      const user = await interaction.guild.members.unban(userId, reason);
+      let user = await interaction.client.users.fetch(userId).catch(() => null);
 
-      // Notification DM
-      try {
-        const dmEmbed = new EmbedBuilder()
-            .setTitle('Sanction levée / Pardonnée')
-            .setDescription(`Votre bannissement a été révoqué sur **${interaction.guild.name}**.`)
-            .setColor(COLORS.SUCCESS);
-        await user.send({ embeds: [dmEmbed] });
-      } catch (err) {
-        // Ignorer si les MP sont fermés
+      if (user) {
+          await sendSanctionEndedDM(user, interaction.guild, 'BAN');
       }
+
+      const unbannedUser = await interaction.guild.members.unban(userId, reason);
+      if (!user) user = unbannedUser;
 
       db.run(
         `UPDATE infractions

@@ -40,4 +40,36 @@ async function sendModerationDM(user, guild, type, reason, duration = null) {
   }
 }
 
-module.exports = { sendModerationDM };
+/**
+ * Sends a standardized sanction ended DM to a user.
+ * @param {Object} user - The Discord User object.
+ * @param {Object} guild - The Discord Guild object.
+ * @param {string} type - The type of sanction ended (e.g., 'BAN', 'MUTE', 'TEMPBAN').
+ * @returns {Promise<{sent: boolean, error: string|null}>}
+ */
+async function sendSanctionEndedDM(user, guild, type) {
+  try {
+    let description = `Votre sanction est terminée sur **${guild.name}**.`;
+    if (type === 'MUTE' || type === 'TIMEOUT') {
+      description = `Votre réduction au silence est terminée sur **${guild.name}**.`;
+    } else if (type === 'BAN' || type === 'TEMPBAN') {
+      description = `Votre bannissement est terminé sur **${guild.name}**.`;
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle('Sanction levée / Pardonnée')
+      .setColor(COLORS.SUCCESS)
+      .setDescription(description)
+      .setTimestamp();
+
+    await user.send({ embeds: [embed] });
+    return { sent: true, error: null };
+  } catch (error) {
+    if (error.code === 50007) {
+      return { sent: false, error: 'MP impossible : utilisateur fermé' };
+    }
+    return { sent: false, error: error.message };
+  }
+}
+
+module.exports = { sendModerationDM, sendSanctionEndedDM };
