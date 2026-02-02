@@ -371,3 +371,24 @@ maintenance/
    *   **Table `warn_config`** : `guild_id`, `threshold`, `action`, `duration`.
    *   **Trigger** : À chaque `/warn`, vérification du seuil.
    *   **Actions** : MUTE, KICK, BAN automatique si seuil atteint.
+
+## 🛡️ Sprint 3.X (Addendum) : Finalisation des Outils de Modération
+
+**Objectif :** Configuration des logs, correction visuelle Nuke, et notifications de levée de sanction.
+
+### Spécifications Techniques
+
+1. **Configuration des Logs (`/setlogs`)**
+   - **Commande :** `src/commands/admin/setlogs.js`
+   - **Action :** Configure `mod_log_channel` dans la table `settings`.
+   - **Impact :** Toutes les actions de modération lisent cette configuration pour envoyer les logs.
+
+2. **Fix Affichage `/nuke`**
+   - **Problème :** Affichage brut de l'URL du GIF.
+   - **Solution :** Utilisation d'un `EmbedBuilder` avec `.setImage()`.
+   - **Fichier :** `src/commands/moderation/nuke.js`.
+
+3. **Notifications de Levée de Sanction (DM)**
+   - **Actions Manuelles :** `unban`, `unmute`, `clearwarns` envoient un MP à l'utilisateur ("Sanction levée / Pardonnée").
+   - **Actions Automatiques :** Le scheduler (`moderationHandler.js`) envoie un MP lors de l'expiration d'un Tempban ou d'un Mute.
+   - **Gestion d'Erreur :** `try/catch` silencieux sur l'envoi de MP (si DM fermés).

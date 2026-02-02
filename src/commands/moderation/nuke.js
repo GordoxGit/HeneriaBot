@@ -1,5 +1,6 @@
-const { SlashCommandBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, EmbedBuilder } = require('discord.js');
 const { logGeneralAction } = require('../../utils/modLogger');
+const { COLORS } = require('../../config/constants');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -52,9 +53,12 @@ module.exports = {
 
                 await channel.delete(`Nuke command executed by ${interaction.user.tag}`);
 
-                await newChannel.send({
-                    content: '☢️ Salon nuké avec succès.\nhttps://media1.tenor.com/m/X9kF3_Ht4yAAAAAd/explosion-mushroom-cloud.gif'
-                });
+                const nukeEmbed = new EmbedBuilder()
+                    .setTitle('☢️ Salon nuké avec succès')
+                    .setImage('https://media1.tenor.com/m/X9kF3_Ht4yAAAAAd/explosion-mushroom-cloud.gif')
+                    .setColor(COLORS.ERROR || 0xFF0000);
+
+                await newChannel.send({ embeds: [nukeEmbed] });
 
                 await logGeneralAction(interaction.guild, interaction.user, 'NUKE', 'Le salon a été recréé.', newChannel);
 
