@@ -392,3 +392,23 @@ maintenance/
    - **Actions Manuelles :** `unban`, `unmute`, `clearwarns` envoient un MP à l'utilisateur ("Sanction levée / Pardonnée").
    - **Actions Automatiques :** Le scheduler (`moderationHandler.js`) envoie un MP lors de l'expiration d'un Tempban ou d'un Mute.
    - **Gestion d'Erreur :** `try/catch` silencieux sur l'envoi de MP (si DM fermés).
+
+## 🛠️ Sprint 3.X (Addendum) : Outils Utilitaires
+
+**Objectif :** Fournir au staff des outils pour créer des messages visuels (Embeds), faire des annonces officielles et lancer des sondages structurés.
+
+### Spécifications Techniques
+
+1. **Système d'Annonces (`/announce`)**
+   - **Arguments :** Salon, Titre, Message, Image (opt), Mention (Everyone/Here/None).
+   - **Comportement :** Envoie un Embed (couleur principale) dans le salon cible. Gère la mention hors de l'embed pour la notification.
+
+2. **Builder d'Embeds (`/embed`)**
+   - **Sous-commande `create` :** Assistant interactif via Modale -> Prévisualisation -> Boutons (Envoyer, Modifier, Annuler).
+   - **Sous-commande `edit` :** Modification directe d'un message existant via Modale pré-remplie.
+   - **Technique :** Gestion des interactions Modales et Boutons centralisée dans `embedInteractionManager.js`.
+
+3. **Système de Sondages (`/poll`)**
+   - **Arguments :** Question, Options (séparées par `|`).
+   - **Comportement :** Embed avec liste numérotée (1-10). Ajout automatique et séquentiel des réactions.
+   - **Limites :** Max 10 options.
