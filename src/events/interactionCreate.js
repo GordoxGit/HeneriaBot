@@ -12,6 +12,7 @@ const {
   confirmCloseTicket,
   cancelCloseTicket
 } = require('../utils/ticketManager');
+const { handleEmbedModal, handleEmbedButton } = require('../utils/embedInteractionManager');
 const logger = require('../utils/logger');
 
 module.exports = {
@@ -21,6 +22,18 @@ module.exports = {
    * @param {import('discord.js').Interaction} interaction
    */
   async execute(interaction) {
+    // Gestion des Modales Embed
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('embed_modal_')) {
+        await handleEmbedModal(interaction);
+        return;
+    }
+
+    // Gestion des Boutons Embed
+    if (interaction.isButton() && interaction.customId.startsWith('embed_btn_')) {
+        await handleEmbedButton(interaction);
+        return;
+    }
+
     // Gestion Autorole (Boutons et Menus)
     if ((interaction.isButton() || interaction.isStringSelectMenu()) && interaction.customId.startsWith('autorole_')) {
         await handleAutoroleInteraction(interaction);
