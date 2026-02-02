@@ -1,8 +1,41 @@
 # 📋 Contexte du Projet HeneriaBot
 
 **Date de mise à jour :** 2026-01-27 (Sprint 2.3 Started)
-**Sprint Actuel :** 2.3 - Engagement Communautaire
+**Sprint Actuel :** 3.1 - Gestion Historique & Logs Centralisés
 **Priorité :** P1 - FEATURE MAJEURE
+
+---
+
+## 🚀 Sprint 3.1 : Gestion Historique & Logs Centralisés
+
+**Objectif :** Créer une vision globale du casier judiciaire d'un utilisateur (/history) et assurer que toutes les actions (Kick/Ban/Mute/Warn) soient logguées proprement et notifiées.
+
+### Spécifications Techniques
+
+1.  **Commande `/history`**
+    *   **Arguments** : `user` (User).
+    *   **Requête SQL** : `SELECT * FROM infractions WHERE user_id = ? AND guild_id = ? ORDER BY created_at DESC`.
+    *   **Affichage** :
+        *   Compteurs par type (ex: "1 Ban, 3 Mutes, 5 Warns").
+        *   Liste des 10 dernières infractions (ID, Type, Raison, Date, Modérateur).
+
+2.  **Gestion Centralisée des DM (`src/utils/modUtils.js`)**
+    *   **Standardisation** : Tous les DM de sanction (Kick, Ban, Mute, Warn) doivent passer par une fonction unique.
+    *   **Format** : Embed Rouge/Orange (selon gravité) avec : Nom Serveur, Type, Raison, Durée (si applicable).
+    *   **Gestion d'erreur** :
+        *   `try/catch` autour de l'envoi.
+        *   Gestion spécifique de l'erreur `50007` (Cannot send messages to this user).
+        *   Le bot ne doit pas échouer la sanction si le DM échoue.
+        *   Feedback modérateur : "Sanction appliquée (MP impossible : utilisateur fermé)".
+
+3.  **Logs de Modération (`src/utils/modLogger.js`)**
+    *   **Découpage** : Séparer l'insertion BDD (`createInfraction`) de l'envoi du log (`logToModChannel`).
+    *   **Contenu du Log** : Embed détaillé envoyé dans `mod_log_channel`.
+    *   **Champs Requis** :
+        *   Modérateur (Avatar + Tag + ID).
+        *   Cible (Avatar + Tag + ID).
+        *   Détails : Action, Raison, Durée, **ID de l'infraction**.
+    *   **Déclenchement** : Le log ne doit être envoyé qu'après confirmation du succès de l'action Discord.
 
 ---
 

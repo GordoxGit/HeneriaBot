@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
-const { logAction } = require('../../utils/modLogger');
+const { createInfraction, logToModChannel } = require('../../utils/modLogger');
+const { sendModerationDM } = require('../../utils/modUtils');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -54,14 +55,17 @@ module.exports = {
     try {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-      // Log (includes DM)
-      await logAction(interaction.guild, targetUser, interaction.user, 'KICK', reason);
+      const dmResult = await sendModerationDM(targetUser, interaction.guild, 'KICK', reason);
 
-      // Execute Kick
       await member.kick(reason);
 
+      const infractionId = createInfraction(interaction.guild, targetUser, interaction.user, 'KICK', reason);
+      await logToModChannel(interaction.guild, targetUser, interaction.user, 'KICK', reason, null, infractionId);
+
+      const dmFeedback = dmResult.sent ? '' : `\n⚠️ ${dmResult.error}`;
+
       return interaction.editReply({
-        content: `✅ **${targetUser.tag}** a été expulsé.\nRaison : ${reason}`
+        content: `✅ **${targetUser.tag}** a été expulsé.\nRaison : ${reason}${dmFeedback}`
       });
 
     } catch (error) {

@@ -1,6 +1,6 @@
 const db = require('../database/db');
 const logger = require('../utils/logger');
-const { logAction } = require('../utils/modLogger');
+const { createInfraction, logToModChannel } = require('../utils/modLogger');
 
 const CHECK_INTERVAL = 60 * 1000; // 60 seconds
 
@@ -70,8 +70,9 @@ async function checkExpiredBans(client) {
 
         // Log if we have the user object
         if (user) {
-             // Pass client.user as moderator
-             await logAction(guild, user, client.user, 'UNBAN', 'Expiration automatique du bannissement temporaire');
+             const reason = 'Expiration automatique du bannissement temporaire';
+             const infractionId = createInfraction(guild, user, client.user, 'UNBAN', reason);
+             await logToModChannel(guild, user, client.user, 'UNBAN', reason, null, infractionId);
         }
 
       } catch (err) {

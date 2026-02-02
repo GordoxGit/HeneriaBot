@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
-const { logAction } = require('../../utils/modLogger');
+const { createInfraction, logToModChannel } = require('../../utils/modLogger');
+const { sendModerationDM } = require('../../utils/modUtils');
 const { parseDuration } = require('../../utils/timeParser');
 
 module.exports = {
@@ -79,11 +80,15 @@ module.exports = {
       // Apply Timeout
       await member.timeout(durationSeconds * 1000, reason);
 
-      // Log Action (DB + DM + Channel)
-      await logAction(interaction.guild, targetUser, interaction.user, 'MUTE', reason, durationSeconds);
+      const dmResult = await sendModerationDM(targetUser, interaction.guild, 'MUTE', reason, durationStr);
+
+      const infractionId = createInfraction(interaction.guild, targetUser, interaction.user, 'MUTE', reason, durationSeconds);
+      await logToModChannel(interaction.guild, targetUser, interaction.user, 'MUTE', reason, durationSeconds, infractionId);
+
+      const dmFeedback = dmResult.sent ? '' : `\n⚠️ ${dmResult.error}`;
 
       return interaction.editReply({
-        content: `✅ **${targetUser.tag}** a été mute pour ${durationStr}.\nRaison : ${reason}`
+        content: `✅ **${targetUser.tag}** a été mute pour ${durationStr}.\nRaison : ${reason}${dmFeedback}`
       });
 
     } catch (error) {

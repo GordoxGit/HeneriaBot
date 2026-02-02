@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const db = require('../../database/db');
-const { logAction } = require('../../utils/modLogger');
+const { createInfraction, logToModChannel } = require('../../utils/modLogger');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -26,11 +26,9 @@ module.exports = {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
       if (member) {
-          // Remove Timeout
           await member.timeout(null, reason);
       }
 
-      // Update DB: deactivate active MUTES for this user
       db.run(
         `UPDATE infractions
          SET active = 0
@@ -38,8 +36,8 @@ module.exports = {
         [interaction.guild.id, targetUser.id]
       );
 
-      // Log action
-      await logAction(interaction.guild, targetUser, interaction.user, 'UNMUTE', reason);
+      const infractionId = createInfraction(interaction.guild, targetUser, interaction.user, 'UNMUTE', reason);
+      await logToModChannel(interaction.guild, targetUser, interaction.user, 'UNMUTE', reason, null, infractionId);
 
       let content = `✅ **${targetUser.tag}** a été unmute.\nRaison : ${reason}`;
       if (!member) {

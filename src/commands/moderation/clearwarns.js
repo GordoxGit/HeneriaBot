@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const db = require('../../database/db');
-const { logAction } = require('../../utils/modLogger');
+const { createInfraction, logToModChannel } = require('../../utils/modLogger');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -23,7 +23,6 @@ module.exports = {
     try {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-      // Update DB
       const info = db.run(
         `UPDATE infractions
          SET active = 0
@@ -37,8 +36,8 @@ module.exports = {
         });
       }
 
-      // Log Action
-      await logAction(interaction.guild, targetUser, interaction.user, 'CLEARWARNS', reason);
+      const infractionId = createInfraction(interaction.guild, targetUser, interaction.user, 'CLEARWARNS', reason);
+      await logToModChannel(interaction.guild, targetUser, interaction.user, 'CLEARWARNS', reason, null, infractionId);
 
       return interaction.editReply({
         content: `✅ **${info.changes}** avertissement(s) ont été retirés pour **${targetUser.tag}**.`

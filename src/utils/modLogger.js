@@ -4,15 +4,16 @@ const { COLORS } = require('../config/constants');
 const logger = require('./logger');
 
 /**
- * Logs a moderation action.
+ * Creates an infraction in the database.
  * @param {Object} guild - The Discord guild object.
  * @param {Object} targetUser - The user being sanctioned (User object).
  * @param {Object} moderator - The moderator performing the action (User object).
- * @param {string} type - The type of sanction (KICK, BAN, TEMPBAN, UNBAN).
+ * @param {string} type - The type of sanction (KICK, BAN, TEMPBAN, UNBAN, MUTE, WARN, UNMUTE, CLEARWARNS).
  * @param {string} reason - The reason for the sanction.
- * @param {number|null} duration - Duration in seconds (for tempbans), or null.
+ * @param {number|null} duration - Duration in seconds (for tempbans/mutes), or null.
+ * @returns {number|null} The ID of the created infraction, or null if failed.
  */
-async function logAction(guild, targetUser, moderator, type, reason, duration = null) {
+function createInfraction(guild, targetUser, moderator, type, reason, duration = null) {
   const timestamp = Math.floor(Date.now() / 1000);
   let expiresAt = null;
 
@@ -20,51 +21,46 @@ async function logAction(guild, targetUser, moderator, type, reason, duration = 
     expiresAt = timestamp + duration;
   }
 
-  // 1. Insert into Database
+  // Determine active state
+  // KICK, UNBAN, UNMUTE, CLEARWARNS are instantaneous or removal actions, so not "active" punishments.
+  let active = 1;
+  if (['KICK', 'UNBAN', 'UNMUTE', 'CLEARWARNS'].includes(type)) {
+      active = 0;
+  }
+
   try {
-    db.run(
+    const result = db.run(
       `INSERT INTO infractions (guild_id, user_id, moderator_id, type, reason, created_at, expires_at, active)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [guild.id, targetUser.id, moderator.id, type, reason, timestamp, expiresAt, 1]
+      [guild.id, targetUser.id, moderator.id, type, reason, timestamp, expiresAt, active]
     );
+    return result.lastInsertRowid;
   } catch (err) {
     logger.error(`Failed to insert infraction into DB: ${err.message}`);
+    return null;
   }
+}
 
-  // 2. DM the User (Best effort)
-  // Only DM if it's not an UNBAN (usually unbans don't need DMs, but prompt said "Tenter d'envoyer un message privé à l'utilisateur avant d'appliquer la sanction")
-  // For UNBAN, user might not share server anymore so DM might fail, but we try if we can.
-  // Actually, for KICK/BAN/TEMPBAN we should definitely try.
-
-  if (!['UNBAN', 'UNMUTE', 'CLEARWARNS'].includes(type)) {
-    try {
-      const dmEmbed = new EmbedBuilder()
-        .setTitle(`Sanction : ${type}`)
-        .setColor(COLORS.ERROR)
-        .setDescription(`Vous avez reçu une sanction sur **${guild.name}**.`)
-        .addFields(
-          { name: 'Raison', value: reason || 'Aucune raison spécifiée' },
-          { name: 'Modérateur', value: moderator.tag }
-        )
-        .setTimestamp();
-
-      if (duration) {
-        dmEmbed.addFields({ name: 'Durée', value: `<t:${expiresAt}:R>` });
-      }
-
-      await targetUser.send({ embeds: [dmEmbed] });
-    } catch (err) {
-      logger.warn(`Could not DM user ${targetUser.tag}: ${err.message}`);
-    }
-  }
-
-  // 3. Log to Channel
+/**
+ * Logs the action to the moderation channel.
+ * @param {Object} guild - The Discord guild object.
+ * @param {Object} targetUser - The user being sanctioned.
+ * @param {Object} moderator - The moderator.
+ * @param {string} type - The type of sanction.
+ * @param {string} reason - The reason.
+ * @param {number|null} duration - Duration in seconds.
+ * @param {number|null} infractionId - The ID of the infraction from DB.
+ */
+async function logToModChannel(guild, targetUser, moderator, type, reason, duration = null, infractionId = null) {
   try {
     const setting = db.get('SELECT value FROM settings WHERE guild_id = ? AND key = ?', [guild.id, 'mod_log_channel']);
 
     if (setting && setting.value) {
       const logChannel = guild.channels.cache.get(setting.value);
       if (logChannel) {
+        const timestamp = Math.floor(Date.now() / 1000);
+        const expiresAt = duration ? timestamp + duration : null;
+
         const logEmbed = new EmbedBuilder()
           .setTitle(`Sanction : ${type}`)
           .setColor(getTypeColor(type))
@@ -74,9 +70,10 @@ async function logAction(guild, targetUser, moderator, type, reason, duration = 
             { name: 'Modérateur', value: `${moderator.tag} (${moderator.id})`, inline: true },
             { name: 'Raison', value: reason || 'Aucune raison spécifiée' },
           )
+          .setFooter({ text: `ID: ${infractionId || 'N/A'}` })
           .setTimestamp();
 
-         if (duration) {
+         if (duration && expiresAt) {
             logEmbed.addFields({ name: 'Expiration', value: `<t:${expiresAt}:F> (<t:${expiresAt}:R>)` });
          }
 
@@ -106,4 +103,7 @@ function getTypeColor(type) {
   }
 }
 
-module.exports = { logAction };
+// Keep logAction for backward compatibility if needed, but we should refactor everything.
+// I will not export logAction to force me to refactor.
+
+module.exports = { createInfraction, logToModChannel, getTypeColor };
