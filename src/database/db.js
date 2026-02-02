@@ -270,6 +270,16 @@ function createTables() {
         expires_at INTEGER,
         active INTEGER DEFAULT 1
       )`
+    },
+    {
+      name: 'warn_config',
+      sql: `CREATE TABLE IF NOT EXISTS warn_config (
+        guild_id TEXT NOT NULL,
+        threshold INTEGER NOT NULL,
+        action TEXT NOT NULL,
+        duration TEXT,
+        UNIQUE(guild_id, threshold)
+      )`
     }
   ];
 
