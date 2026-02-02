@@ -296,14 +296,6 @@ maintenance/
 
 ---
 
-## 🚀 Prochaines Étapes
-
-1. Résoudre l'incident d'attribution de rôle (messageCreate.js)
-2. Corriger les avertissements deprecated (autorole.js)
-3. Valider le fonctionnement global
-
----
-
 **Dernière mise à jour :** 2026-01-27 par Claude
 **Branch :** `claude/fix-db-schema-column-crk8U`
 **Ticket :** P0 - Migration manuelle schéma BDD (missing column)
@@ -358,3 +350,24 @@ maintenance/
     *   `src/commands/moderation/warn.js`
     *   `src/commands/moderation/warnings.js`
     *   `src/commands/moderation/clearwarns.js`
+
+## 🛡️ Sprint 3.X (Addendum) : Gestion Utilisateurs & Automatisations
+
+**Objectif :** Gestion fine des utilisateurs (pseudos, rôles) et automatisation des fins de sanctions (tempban) ainsi que l'escalade des sanctions (auto-mute après X warns).
+
+### Spécifications Techniques
+
+1. **Gestion des Utilisateurs**
+   *   **`/nick`** : Modification de pseudo avec vérification de hiérarchie et longueur.
+   *   **`/role`** : Ajout/Retrait de rôle avec vérification de hiérarchie (Bot > Rôle).
+   *   **`/massrole`** : Actions de masse (Add/Remove) sur Everyone/Humans/Bots avec Batch Processing (anti-RateLimit).
+
+2. **Scheduler (Tempban & Mutes)**
+   *   Boucle de vérification (60s).
+   *   **Tempban** : Unban automatique + Log ("Unban automatique de X").
+   *   **Mute** : Update BDD (`active = 0`) à l'expiration.
+
+3. **Auto-Actions sur Warnings**
+   *   **Table `warn_config`** : `guild_id`, `threshold`, `action`, `duration`.
+   *   **Trigger** : À chaque `/warn`, vérification du seuil.
+   *   **Actions** : MUTE, KICK, BAN automatique si seuil atteint.

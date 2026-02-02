@@ -65,12 +65,12 @@ async function checkExpiredBans(client) {
       }
 
       try {
-        await guild.members.unban(ban.user_id, 'Expiration du bannissement temporaire');
-        logger.success(`Utilisateur ${ban.user_id} débanni de ${guild.name} (Auto-Unban).`);
+        await guild.members.unban(ban.user_id, 'Unban automatique');
+        logger.success(`Unban automatique de ${ban.user_id}`);
 
         // Log if we have the user object
         if (user) {
-             const reason = 'Expiration automatique du bannissement temporaire';
+             const reason = 'Unban automatique (Expiration Tempban)';
              const infractionId = createInfraction(guild, user, client.user, 'UNBAN', reason);
              await logToModChannel(guild, user, client.user, 'UNBAN', reason, null, infractionId);
         }
