@@ -16,6 +16,11 @@
    - Système de transaction atomique avec gestion de stock.
    - Fichiers impactés : `src/commands/economy/shop.js`, `src/commands/economy/buy.js`, `src/commands/economy/inventory.js`.
 
+4. **Système de RPG Économique (Métiers)** :
+   - Implémenter un système de progression professionnelle où les joueurs choisissent un métier.
+   - Focus initial sur le métier "Mineur" avec récolte de ressources (items) et gain d'XP.
+   - Fichiers impactés : `src/database/db.js`, `src/commands/economy/work.js`, `src/jobs/miner.js`.
+
 ## Historique
 - Le système de vote et de modération de base (ban, kick, mute) est en place.
 - La gestion des tickets et des niveaux est fonctionnelle.
@@ -64,3 +69,22 @@ Ajout de la table `giveaways` :
   - `admin add/remove` : Gestion du catalogue.
 - **/buy** : Achat d'objets (Transaction atomique, attribution de rôle).
 - **/inventory** : Visualisation des objets possédés.
+
+## Spécifications Techniques (RPG Métiers)
+
+### Base de Données
+Ajout de la table `job_progress` :
+- `user_id` (TEXT)
+- `guild_id` (TEXT)
+- `job_slug` (TEXT)
+- `level` (INTEGER)
+- `experience` (INTEGER)
+- `last_worked` (INTEGER)
+
+### Architecture
+- **Structure modulaire** : Les métiers sont définis dans `src/jobs/` (ex: `miner.js`).
+- **/work** : Commande principale faisant office de routeur.
+  - `choose` : Sélection du métier.
+  - `perform` : Exécution de la tâche (Logique spécifique, Cooldown, Loot, XP).
+  - `info` : Affichage de la progression.
+- **Logique Mineur** : Table de butin (Pierre, Charbon, Fer, Diamant) avec probabilités et XP variable.
