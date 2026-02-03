@@ -373,6 +373,16 @@ function createTables() {
         last_worked INTEGER DEFAULT 0,
         PRIMARY KEY (user_id, guild_id, job_slug)
       )`
+    },
+    {
+      name: 'recipes',
+      sql: `CREATE TABLE IF NOT EXISTS recipes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        result_item_id INTEGER NOT NULL,
+        materials TEXT NOT NULL,
+        required_job_level INTEGER DEFAULT 1,
+        FOREIGN KEY (result_item_id) REFERENCES shop_items(id)
+      )`
     }
   ];
 
