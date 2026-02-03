@@ -468,3 +468,44 @@ maintenance/
    - **Reset Global :** Sécurisé par bouton de confirmation.
 
 **Fichiers impactés :** `src/commands/economy/daily.js`, `src/commands/economy/pay.js`, `src/commands/economy/baltop.js`, `src/commands/admin/eco.js`, `src/config/economy.js`.
+
+## 🏦 Sprint 3.X (Addendum) : Banque et Transactions
+
+**Objectif :** Permettre aux joueurs de sécuriser leur argent en le déplaçant de leur portefeuille (Cash) vers leur compte en banque (Bank), et inversement.
+
+### Spécifications Techniques
+
+1. **Commande de Dépôt (`/deposit`)**
+   - **Arguments :** montant (String). Accepte un nombre entier OU le mot-clé "all" (ou "tout").
+   - **Logique Métier :**
+     - Récupérer le solde cash actuel.
+     - **Validation :**
+       - Si argument = "all"/"tout", le montant devient égal au solde cash.
+       - Vérifier que le montant > 0.
+       - Vérifier que l'utilisateur a assez de cash disponible.
+     - **Transaction :**
+       - `cash = cash - montant`
+       - `bank = bank + montant`
+       - Trace : Enregistrement dans `economy_transactions` (Type: 'DEPOSIT').
+     - **Réponse :** Embed confirmant le dépôt ("💳 Vous avez déposé X à la banque").
+
+2. **Commande de Retrait (`/withdraw`)**
+   - **Arguments :** montant (String). Accepte un nombre entier OU "all"/"tout".
+   - **Logique Métier :**
+     - Récupérer le solde bank actuel.
+     - **Validation :**
+       - Si argument = "all"/"tout", le montant devient égal au solde bank.
+       - Vérifier que le montant > 0.
+       - Vérifier que l'utilisateur a assez d'argent en bank.
+     - **Transaction :**
+       - `bank = bank - montant`
+       - `cash = cash + montant`
+       - Trace : Enregistrement dans `economy_transactions` (Type: 'WITHDRAW').
+     - **Réponse :** Embed confirmant le retrait ("💸 Vous avez retiré X de la banque").
+
+3. **Validation Technique**
+   - **Keyword "all" :** Le parsing de l'argument doit gérer insensiblement la casse (all, ALL, Tout).
+   - **Intégrité :** Impossible de déposer de l'argent qu'on n'a pas (pas de solde négatif).
+   - **Affichage :** La commande `/balance` (déjà existante) devra bien refléter ces changements (Cash baisse, Banque monte).
+
+**Fichiers impactés :** `src/commands/economy/deposit.js`, `src/commands/economy/withdraw.js`.
