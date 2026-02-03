@@ -21,10 +21,17 @@
    - Focus initial sur le métier "Mineur" avec récolte de ressources (items) et gain d'XP.
    - Fichiers impactés : `src/database/db.js`, `src/commands/economy/work.js`, `src/jobs/miner.js`.
 
+5. **Métier Chasseur & Événements Critiques** (NOUVEAU) :
+   - Implémenter le métier "Chasseur" avec mécaniques de traque et combat.
+   - Ajouter un système de déblocage de métiers (Progression).
+   - Intégrer des événements rares (Jackpots/Boss) et des cooldowns dynamiques.
+   - Fichiers impactés : `src/jobs/hunter.js`, `src/commands/economy/work.js`, `src/database/db.js`.
+
 ## Historique
 - Le système de vote et de modération de base (ban, kick, mute) est en place.
 - La gestion des tickets et des niveaux est fonctionnelle.
 - Système économique de base (Balance, Daily, Pay) en place.
+- Métier Mineur implémenté.
 
 ## Spécifications Techniques (Giveaway & Interactions)
 
@@ -73,18 +80,24 @@ Ajout de la table `giveaways` :
 ## Spécifications Techniques (RPG Métiers)
 
 ### Base de Données
-Ajout de la table `job_progress` :
+Modification de la table `job_progress` :
 - `user_id` (TEXT)
 - `guild_id` (TEXT)
 - `job_slug` (TEXT)
 - `level` (INTEGER)
 - `experience` (INTEGER)
 - `last_worked` (INTEGER)
+- `unlocked` (INTEGER DEFAULT 0) [NOUVEAU]
 
 ### Architecture
-- **Structure modulaire** : Les métiers sont définis dans `src/jobs/` (ex: `miner.js`).
+- **Structure modulaire** : Les métiers sont définis dans `src/jobs/` (ex: `miner.js`, `hunter.js`).
 - **/work** : Commande principale faisant office de routeur.
-  - `choose` : Sélection du métier.
-  - `perform` : Exécution de la tâche (Logique spécifique, Cooldown, Loot, XP).
+  - `choose` : Sélection du métier avec vérification des pré-requis (ex: Warrior Lv 5 pour Hunter).
+  - `perform` : Exécution de la tâche.
+    - Cooldown dynamique selon le métier (Mineur 30m, Chasseur 4h).
+    - Événements Critiques (1/1000) : Jackpot (x10) ou Boss.
   - `info` : Affichage de la progression.
-- **Logique Mineur** : Table de butin (Pierre, Charbon, Fer, Diamant) avec probabilités et XP variable.
+- **Logique Chasseur** :
+  - Phase 1 : Traque (RNG). Échec = Cooldown réduit.
+  - Phase 2 : Combat (Niveau + Bonus Arme).
+  - Loot : Trophées, Peaux, Essences.

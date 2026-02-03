@@ -9,6 +9,11 @@ const { COLORS } = require('../../config/constants');
 const jobsPath = path.join(__dirname, '../../jobs');
 let availableJobs = [];
 
+// Configuration des pré-requis pour les métiers
+const JOB_REQUIREMENTS = {
+    hunter: { job: 'warrior', level: 5, name: 'Guerrier' }
+};
+
 try {
     if (fs.existsSync(jobsPath)) {
         availableJobs = fs.readdirSync(jobsPath)
@@ -69,17 +74,39 @@ module.exports = {
 
             const jobData = require(jobFile);
 
+            // Vérification si le métier est déjà débloqué ou possédé
             const existing = db.get(
                 `SELECT * FROM job_progress WHERE user_id = ? AND guild_id = ? AND job_slug = ?`,
                 [userId, guildId, jobSlug]
             );
+
+            // Vérification des pré-requis (Sauf si déjà débloqué explicitement via la colonne unlocked)
+            const isUnlocked = existing && existing.unlocked === 1;
+            const req = JOB_REQUIREMENTS[jobSlug];
+
+            if (req && !isUnlocked) {
+                const reqJob = db.get(
+                    `SELECT level FROM job_progress WHERE user_id = ? AND guild_id = ? AND job_slug = ?`,
+                    [userId, guildId, req.job]
+                );
+
+                if (!reqJob || reqJob.level < req.level) {
+                    return interaction.reply({
+                        embeds: [createEmbed()
+                            .setTitle('🔒 Métier Verrouillé')
+                            .setDescription(`Pour devenir **${jobData.name}**, vous devez atteindre le niveau **${req.level}** dans le métier **${req.name}**.`)
+                            .setColor(COLORS.ERROR)
+                        ],
+                        ephemeral: true
+                    });
+                }
+            }
 
             const now = Math.floor(Date.now() / 1000);
 
             try {
                 if (existing) {
                     // Mise à jour du timestamp pour rendre ce métier "actif" (le plus récent)
-                    // Cela applique aussi le cooldown, ce qui est logique pour un changement de poste
                     db.run(
                         `UPDATE job_progress SET last_worked = ? WHERE user_id = ? AND guild_id = ? AND job_slug = ?`,
                         [now, userId, guildId, jobSlug]
@@ -190,9 +217,31 @@ module.exports = {
                 });
             }
 
+            // Récupération de l'inventaire pour la logique du métier (Armes, Outils...)
+            let inventoryItems = [];
+            try {
+                inventoryItems = db.all(
+                    `SELECT si.name FROM inventory i
+                     JOIN shop_items si ON i.item_id = si.id
+                     WHERE i.user_id = ? AND i.guild_id = ? AND i.quantity > 0`,
+                    [userId, guildId]
+                ).map(row => row.name);
+            } catch (err) {
+                console.error("Erreur récupération inventaire:", err);
+            }
+
+            // Événement Critique (RNG 1/1000)
+            const isCritical = Math.random() < 0.001;
+
             // Exécution du travail
-            const result = jobModule.work(userJob.level);
-            // result attendu: { items: [{name, quantity, xp}], totalXp, flavorText }
+            // On passe l'inventaire et le flag critique
+            const result = jobModule.work(userJob.level, inventoryItems, isCritical);
+
+            // Gestion du cooldown dynamique (ex: Hunter tracking fail -> reduceCooldown)
+            let workedTimestamp = now;
+            if (result.reduceCooldown) {
+                workedTimestamp = now - Math.floor((jobModule.cooldown || 3600) / 2);
+            }
 
             // Vérification de l'existence des items dans le shop du serveur
             const itemNames = result.items.map(i => i.name);
@@ -253,7 +302,7 @@ module.exports = {
                     // Mise à jour de la progression
                     db.run(
                         `UPDATE job_progress SET experience = ?, level = ?, last_worked = ? WHERE user_id = ? AND guild_id = ? AND job_slug = ?`,
-                        [currentXp, newLevel, now, userId, guildId, userJob.job_slug]
+                        [currentXp, newLevel, workedTimestamp, userId, guildId, userJob.job_slug]
                     );
 
                 })();
@@ -262,11 +311,11 @@ module.exports = {
                 return interaction.reply({ content: "Une erreur est survenue lors de la sauvegarde de votre travail.", ephemeral: true });
             }
 
-            // Réponse
+            // Construction de l'Embed de réponse
             const embed = createEmbed()
                 .setTitle(`${jobModule.emoji || '🔨'} Travail terminé`)
                 .setDescription(result.flavorText)
-                .setColor(COLORS.SUCCESS)
+                .setColor(isCritical ? '#FFD700' : COLORS.SUCCESS) // Or pour critique, Vert pour normal
                 .addFields(
                     { name: 'Gains', value: result.items.map(i => `+${i.quantity} **${i.name}**`).join('\n') || 'Rien', inline: true },
                     { name: 'Expérience', value: `+${result.totalXp} XP`, inline: true }
@@ -276,10 +325,27 @@ module.exports = {
                 embed.addFields({ name: '🎉 NIVEAU SUPÉRIEUR !', value: `Vous êtes passé au niveau **${newLevel}** !`, inline: false });
             }
 
-            embed.setFooter({ text: `Niveau Actuel: ${newLevel} • XP: ${newLevel * 100 - userJob.experience - result.totalXp > 0 ? (newLevel * 100) - (userJob.experience + result.totalXp) : 0} restants` });
-            // Note: Footer calculation approximation for visual sake, exact calculation is tricky without re-evaluating loop.
-            // Simplified:
+            // Si c'est un critique, on mentionne le canal (sauf si ephemeral, mais ici on répond publiquement par défaut sauf si erreur)
+            // Wait, interaction.reply is default. Should we make it visible? Current code uses ephemeral: false (default)
+            // But if critical, maybe we want to ping or just distinct visual.
+            // The prompt says: "Envoyer le message dans le salon avec une mention spéciale ou une couleur dorée"
+
+            // Footer
             embed.setFooter({ text: `Niveau ${newLevel}` });
+
+            // Si cooldown réduit (Hunter fail)
+            if (result.reduceCooldown) {
+                embed.addFields({ name: '⏱️ Cooldown', value: "Le temps de repos a été réduit de moitié.", inline: false });
+            }
+
+            if (isCritical) {
+                 // On envoie un message spécial en plus de l'embed ou dans le content ?
+                 // On va mettre un content visible.
+                 return interaction.reply({
+                     content: `🌟 **ÉVÉNEMENT RARE !** <@${userId}> a déclenché quelque chose d'incroyable !`,
+                     embeds: [embed]
+                 });
+            }
 
             return interaction.reply({ embeds: [embed] });
         }
