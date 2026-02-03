@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { createEmbed, errorEmbed, successEmbed } = require('../../utils/embedBuilder');
 const db = require('../../database/db');
 const { COLORS } = require('../../config/constants');
@@ -16,12 +16,110 @@ module.exports = {
                 .addStringOption(opt =>
                     opt.setName('item')
                         .setDescription('Nom de l\'objet à fabriquer')
-                        .setRequired(true))),
+                        .setRequired(true)))
+        .addSubcommandGroup(group =>
+            group.setName('admin')
+                .setDescription('Gestion des recettes (Admin)')
+                .addSubcommand(sub =>
+                    sub.setName('add')
+                        .setDescription('Ajouter une recette')
+                        .addStringOption(opt => opt.setName('output').setDescription('Objet à créer (Nom)').setRequired(true))
+                        .addStringOption(opt => opt.setName('materials').setDescription('Matériaux (ex: Bois:2,Fer:1)').setRequired(true))
+                        .addIntegerOption(opt => opt.setName('level').setDescription('Niveau requis').setRequired(true)))
+                .addSubcommand(sub =>
+                    sub.setName('remove')
+                        .setDescription('Supprimer une recette')
+                        .addIntegerOption(opt => opt.setName('id').setDescription('ID de la recette').setRequired(true)))),
 
     async execute(interaction) {
+        const subcommandGroup = interaction.options.getSubcommandGroup();
         const subcommand = interaction.options.getSubcommand();
         const userId = interaction.user.id;
         const guildId = interaction.guildId;
+
+        if (subcommandGroup === 'admin') {
+            if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+                return interaction.reply({
+                    embeds: [errorEmbed('Vous n\'avez pas la permission de gérer les recettes.')],
+                    ephemeral: true
+                });
+            }
+
+            if (subcommand === 'add') {
+                const outputName = interaction.options.getString('output');
+                const materialsStr = interaction.options.getString('materials');
+                const level = interaction.options.getInteger('level');
+
+                // Validate output item
+                const outputItem = db.get('SELECT * FROM shop_items WHERE guild_id = ? AND LOWER(name) = LOWER(?)', [guildId, outputName]);
+                if (!outputItem) {
+                    return interaction.reply({
+                        embeds: [errorEmbed(`L'objet de résultat **${outputName}** n'existe pas dans le magasin.`)],
+                        ephemeral: true
+                    });
+                }
+
+                // Parse materials
+                const materials = {};
+                const parts = materialsStr.split(',');
+                for (const part of parts) {
+                    const [name, qty] = part.split(':').map(s => s.trim());
+                    if (!name || !qty || isNaN(qty)) {
+                        return interaction.reply({
+                            embeds: [errorEmbed('Format des matériaux invalide. Utilisez: `Nom:Quantité,Nom2:Quantité`\nExemple: `Bois:2,Fer:1`')],
+                            ephemeral: true
+                        });
+                    }
+
+                    // Validate material exists
+                    const matItem = db.get('SELECT * FROM shop_items WHERE guild_id = ? AND LOWER(name) = LOWER(?)', [guildId, name]);
+                    if (!matItem) {
+                        return interaction.reply({
+                            embeds: [errorEmbed(`Le matériau **${name}** n'existe pas dans le magasin.`)],
+                            ephemeral: true
+                        });
+                    }
+
+                    // Store strict name from DB to avoid case issues later
+                    materials[matItem.name] = parseInt(qty);
+                }
+
+                try {
+                    db.run(
+                        'INSERT INTO recipes (result_item_id, materials, required_job_level) VALUES (?, ?, ?)',
+                        [outputItem.id, JSON.stringify(materials), level]
+                    );
+                    return interaction.reply({
+                        embeds: [successEmbed(`Recette pour **${outputItem.name}** ajoutée !`)],
+                        ephemeral: true
+                    });
+                } catch (error) {
+                    console.error(error);
+                    return interaction.reply({
+                        embeds: [errorEmbed("Erreur lors de l'ajout de la recette.")],
+                        ephemeral: true
+                    });
+                }
+            }
+
+            if (subcommand === 'remove') {
+                const id = interaction.options.getInteger('id');
+                const recipe = db.get('SELECT * FROM recipes WHERE id = ?', [id]);
+
+                if (!recipe) {
+                    return interaction.reply({
+                        embeds: [errorEmbed("Recette introuvable.")],
+                        ephemeral: true
+                    });
+                }
+
+                db.run('DELETE FROM recipes WHERE id = ?', [id]);
+                return interaction.reply({
+                    embeds: [successEmbed(`Recette #${id} supprimée.`)],
+                    ephemeral: true
+                });
+            }
+        }
 
         // Check if user is Artisan
         const job = db.get(
