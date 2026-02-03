@@ -101,3 +101,14 @@ Modification de la table `job_progress` :
   - Phase 1 : Traque (RNG). Échec = Cooldown réduit.
   - Phase 2 : Combat (Niveau + Bonus Arme).
   - Loot : Trophées, Peaux, Essences.
+
+## 6. Administration Avancée & Améliorations UX
+- **Administration des Recettes (/craft admin)** :
+  - Permettre aux administrateurs de créer et supprimer des recettes d'artisanat via commande.
+  - Fichiers impactés : `src/commands/economy/craft.js`.
+- **UX Améliorée (Barre d'XP)** :
+  - Remplacer l'affichage textuel de l'XP par une barre visuelle.
+  - Fichiers impactés : `src/commands/economy/work.js`, `src/utils/ui.js`.
+- **Administration XP Métiers (/job admin)** :
+  - Gérer l'XP et les niveaux des joueurs manuellement (Ajout, Retrait, Reset).
+  - Fichiers impactés : `src/commands/economy/job.js`.

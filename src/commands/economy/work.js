@@ -1,5 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { createEmbed } = require('../../utils/embedBuilder');
+const { getProgressBar } = require('../../utils/ui');
 const db = require('../../database/db');
 const path = require('path');
 const fs = require('fs');
@@ -171,11 +172,13 @@ module.exports = {
             const cooldownEnd = mainJob.last_worked + (mainJob.config.cooldown || 3600);
             const isReady = now >= cooldownEnd;
 
+            const progressBar = getProgressBar(mainJob.experience, nextLevelXp);
+
             const embed = createEmbed()
                 .setTitle(`${mainJob.config.emoji || ''} Métier : ${mainJob.config.name}`)
                 .addFields(
                     { name: 'Niveau', value: `${mainJob.level}`, inline: true },
-                    { name: 'Expérience', value: `${mainJob.experience} / ${nextLevelXp} XP`, inline: true },
+                    { name: 'Expérience', value: `${progressBar} (${mainJob.experience} / ${nextLevelXp} XP)`, inline: true },
                     { name: 'Disponibilité', value: isReady ? "✅ Disponible" : `<t:${cooldownEnd}:R>`, inline: true }
                 )
                 .setColor(COLORS.PRIMARY);
