@@ -90,12 +90,29 @@ module.exports = {
                 });
             }
 
-            db.run('DELETE FROM shop_items WHERE id = ?', [itemId]);
+            try {
+                const deleteItem = db.transaction((id) => {
+                    // Supprimer les références dans l'inventaire
+                    db.run('DELETE FROM inventory WHERE item_id = ?', [id]);
+                    // Supprimer les références dans les recettes (résultat)
+                    db.run('DELETE FROM recipes WHERE result_item_id = ?', [id]);
+                    // Supprimer l'article
+                    db.run('DELETE FROM shop_items WHERE id = ?', [id]);
+                });
 
-            return interaction.reply({
-                embeds: [successEmbed(`L'article **${item.name}** (ID: ${itemId}) a été supprimé.`)],
-                ephemeral: true
-            });
+                deleteItem(itemId);
+
+                return interaction.reply({
+                    embeds: [successEmbed(`L'article **${item.name}** (ID: ${itemId}) a été supprimé.`)],
+                    ephemeral: true
+                });
+            } catch (error) {
+                console.error(error);
+                return interaction.reply({
+                    embeds: [errorEmbed('Une erreur est survenue lors de la suppression de l\'article.')],
+                    ephemeral: true
+                });
+            }
         }
     } else if (subcommand === 'view') {
         const items = db.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
@@ -140,11 +157,12 @@ module.exports = {
             new ButtonBuilder().setCustomId('next').setLabel('▶️').setStyle(ButtonStyle.Primary).setDisabled(totalPages === 1)
         );
 
-        const response = await interaction.reply({
+        await interaction.reply({
             embeds: [generateEmbed(0)],
             components: totalPages > 1 ? [row] : [],
-            fetchReply: true
         });
+
+        const response = await interaction.fetchReply();
 
         if (totalPages > 1) {
             const collector = response.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
