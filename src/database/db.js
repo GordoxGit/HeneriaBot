@@ -361,6 +361,18 @@ function createTables() {
         quantity INTEGER DEFAULT 1,
         FOREIGN KEY (item_id) REFERENCES shop_items(id)
       )`
+    },
+    {
+      name: 'job_progress',
+      sql: `CREATE TABLE IF NOT EXISTS job_progress (
+        user_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        job_slug TEXT NOT NULL,
+        level INTEGER DEFAULT 1,
+        experience INTEGER DEFAULT 0,
+        last_worked INTEGER DEFAULT 0,
+        PRIMARY KEY (user_id, guild_id, job_slug)
+      )`
     }
   ];
 
