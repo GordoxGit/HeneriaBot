@@ -443,3 +443,28 @@ maintenance/
    *   **Affichage** : Tri par `order_position`, Embed propre avec Avatar/Pseudo/Rôle.
 
 **Fichiers impactés :** `src/database/db.js`, `src/events/interactionCreate.js`, `src/commands/admin/perms.js`, `src/commands/utils/team.js`.
+
+## 💰 Sprint 3.X (Addendum) : Économie Globale
+
+**Objectif :** Permettre la circulation de la monnaie (paiements entre joueurs), l'injection de liquidités (daily) et la régulation par les administrateurs.
+
+### Spécifications Techniques
+
+1. **Récompense Journalière (`/daily`)**
+   - **Logique :** Cooldown de 20h (Config). Gain de 500 crédits.
+   - **Trace :** Enregistrement dans `economy_transactions` (Type: 'REWARD').
+
+2. **Virements (`/pay`)**
+   - **Sécurité :** Vérification solde (Cash uniquement), montant positif, anti-auto-paiement.
+   - **Trace :** Enregistrement dans `economy_transactions` (Type: 'PAY').
+
+3. **Classement (`/baltop`)**
+   - **Affichage :** Top 10 (Cash + Bank).
+   - **Position Joueur :** Affichée en footer si hors Top 10.
+
+4. **Administration (`/eco`)**
+   - **Sous-commandes :** `give`, `take`, `set`, `reset`, `reset_all`.
+   - **Sécurité :** Logs systématiques dans le salon de modération.
+   - **Reset Global :** Sécurisé par bouton de confirmation.
+
+**Fichiers impactés :** `src/commands/economy/daily.js`, `src/commands/economy/pay.js`, `src/commands/economy/baltop.js`, `src/commands/admin/eco.js`, `src/config/economy.js`.

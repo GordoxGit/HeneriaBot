@@ -525,10 +525,21 @@ function close() {
   }
 }
 
+/**
+ * Crée une transaction
+ * @param {Function} cb - La fonction à exécuter dans la transaction
+ * @returns {Function} La fonction transactionnelle wrapper
+ */
+function transaction(cb) {
+  if (!db) throw new Error('La base de données n\'est pas initialisée');
+  return db.transaction(cb);
+}
+
 module.exports = {
   init,
   run,
   get,
   all,
+  transaction,
   close
 };
