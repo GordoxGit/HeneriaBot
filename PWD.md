@@ -10,9 +10,16 @@
    - Ajouter des commandes d'interaction directe (Say, DM).
    - Fichiers impactés : `src/database/db.js`, `src/commands/utils/giveaway.js`, `src/commands/utils/say.js`, `src/commands/utils/dm.js`, `src/handlers/giveawayHandler.js`.
 
+3. **Magasin Virtuel (Shop)** :
+   - Création d'un magasin permettant l'achat d'objets et de rôles avec la monnaie virtuelle.
+   - Gestion administrative du catalogue (ajout/suppression).
+   - Système de transaction atomique avec gestion de stock.
+   - Fichiers impactés : `src/commands/economy/shop.js`, `src/commands/economy/buy.js`, `src/commands/economy/inventory.js`.
+
 ## Historique
 - Le système de vote et de modération de base (ban, kick, mute) est en place.
 - La gestion des tickets et des niveaux est fonctionnelle.
+- Système économique de base (Balance, Daily, Pay) en place.
 
 ## Spécifications Techniques (Giveaway & Interactions)
 
@@ -42,18 +49,18 @@ Ajout de la table `giveaways` :
 - Annonce des gagnants et mise à jour de l'embed.
 - Gestion des erreurs et persistance (chargement depuis BDD).
 
-3. **Système Économique (Base & Balance)** :
-   - Mise en place de la persistance (Portefeuilles, Inventaires).
-   - Commande de consultation de solde.
-   - Fichiers impactés : `src/database/db.js`, `src/config/economy.js`, `src/commands/economy/balance.js`.
-
 ## Spécifications Techniques (Économie)
 
 ### Base de Données
 - **wallets** : `user_id`, `guild_id`, `cash`, `bank`, `last_daily`.
 - **economy_transactions** : Historique des mouvements.
-- **shop_items** : Articles du magasin.
-- **inventory** : Inventaires joueurs.
+- **shop_items** : Articles du magasin (`id`, `name`, `price`, `description`, `role_id`, `stock`).
+- **inventory** : Inventaires joueurs (`user_id`, `item_id`, `quantity`).
 
 ### Commandes
-- **/balance** : Affiche le solde (Cash + Banque) et le rang de richesse. Création automatique du compte si inexistant.
+- **/balance** : Affiche le solde (Cash + Banque) et le rang de richesse.
+- **/shop** :
+  - `view` : Liste les articles avec pagination.
+  - `admin add/remove` : Gestion du catalogue.
+- **/buy** : Achat d'objets (Transaction atomique, attribution de rôle).
+- **/inventory** : Visualisation des objets possédés.
