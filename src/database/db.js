@@ -280,6 +280,20 @@ function createTables() {
         duration TEXT,
         UNIQUE(guild_id, threshold)
       )`
+    },
+    {
+      name: 'giveaways',
+      sql: `CREATE TABLE IF NOT EXISTS giveaways (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        message_id TEXT UNIQUE,
+        channel_id TEXT,
+        guild_id TEXT,
+        prize TEXT,
+        winners_count INTEGER,
+        end_timestamp INTEGER,
+        host_id TEXT,
+        ended INTEGER DEFAULT 0
+      )`
     }
   ];
 

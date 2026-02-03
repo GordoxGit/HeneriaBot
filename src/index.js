@@ -11,6 +11,7 @@ const loadCommands = require('./handlers/commandHandler');
 const loadEvents = require('./handlers/eventHandler');
 const voteHandler = require('./handlers/voteHandler');
 const moderationHandler = require('./handlers/moderationHandler');
+const giveawayHandler = require('./handlers/giveawayHandler');
 const voteWebhookRoutes = require('./api/webhooks/voteWebhook');
 
 // Initialisation du client Discord avec les intents nécessaires
@@ -20,6 +21,7 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessageReactions,
   ],
 });
 
@@ -53,6 +55,9 @@ async function init() {
 
     // Initialisation du système de modération
     moderationHandler.init(client);
+
+    // Initialisation du système de giveaways
+    giveawayHandler.init(client);
 
     // Initialisation du serveur API (Webhooks)
     const app = express();
