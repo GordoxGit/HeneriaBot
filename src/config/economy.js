@@ -13,7 +13,10 @@ module.exports = {
   TRANSACTION_TAX: 0,
 
   // Récompense quotidienne par défaut
-  DAILY_REWARD: 100,
+  DAILY_REWARD: 500,
+
+  // Cooldown pour la récompense quotidienne (en secondes, 20h)
+  DAILY_COOLDOWN: 72000,
 
   // Gain par message (min/max)
   MESSAGE_REWARD_MIN: 1,
