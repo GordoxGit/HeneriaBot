@@ -41,3 +41,19 @@ Ajout de la table `giveaways` :
 - Tirage au sort parmi les réactions 🎉.
 - Annonce des gagnants et mise à jour de l'embed.
 - Gestion des erreurs et persistance (chargement depuis BDD).
+
+3. **Système Économique (Base & Balance)** :
+   - Mise en place de la persistance (Portefeuilles, Inventaires).
+   - Commande de consultation de solde.
+   - Fichiers impactés : `src/database/db.js`, `src/config/economy.js`, `src/commands/economy/balance.js`.
+
+## Spécifications Techniques (Économie)
+
+### Base de Données
+- **wallets** : `user_id`, `guild_id`, `cash`, `bank`, `last_daily`.
+- **economy_transactions** : Historique des mouvements.
+- **shop_items** : Articles du magasin.
+- **inventory** : Inventaires joueurs.
+
+### Commandes
+- **/balance** : Affiche le solde (Cash + Banque) et le rang de richesse. Création automatique du compte si inexistant.
