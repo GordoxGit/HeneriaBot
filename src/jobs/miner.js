@@ -15,9 +15,11 @@ const LOOT_TABLE = [
 /**
  * Exécute le travail de mineur
  * @param {number} level - Le niveau actuel du métier
+ * @param {Array<string>} inventory - Liste des noms d'items possédés (non utilisé pour le mineur mais requis par la signature)
+ * @param {boolean} isCritical - Si un événement critique (Jackpot) est déclenché
  * @returns {Object} Résultat du travail
  */
-function work(level) {
+function work(level, inventory = [], isCritical = false) {
     // Bonus de chance : +0.5% par niveau pour les items rares (Diamant et Fer)
     // On déduit ce pourcentage de la Pierre (item commun)
 
@@ -57,18 +59,25 @@ function work(level) {
 
     // Quantité : Peut-être aléatoire plus tard, pour l'instant 1
     // On pourrait ajouter une chance de double drop avec le niveau
-    const quantity = 1;
+    let quantity = 1;
+    let flavorSuffix = "";
+
+    // === ÉVÉNEMENT CRITIQUE : JACKPOT ===
+    if (isCritical) {
+        quantity = 10;
+        flavorSuffix = "\n🎰 **JACKPOT !** Vous avez trouvé un filon pur ! (Gain x10)";
+    }
 
     return {
         items: [
             {
                 name: lootItem.name,
                 quantity: quantity,
-                xp: lootItem.xp
+                xp: lootItem.xp * quantity // On multiplie aussi l'XP pour récompenser le jackpot
             }
         ],
         totalXp: lootItem.xp * quantity,
-        flavorText: getRandomFlavorText(lootItem.name)
+        flavorText: getRandomFlavorText(lootItem.name) + flavorSuffix
     };
 }
 

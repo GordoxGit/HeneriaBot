@@ -371,6 +371,7 @@ function createTables() {
         level INTEGER DEFAULT 1,
         experience INTEGER DEFAULT 0,
         last_worked INTEGER DEFAULT 0,
+        unlocked INTEGER DEFAULT 0,
         PRIMARY KEY (user_id, guild_id, job_slug)
       )`
     },
