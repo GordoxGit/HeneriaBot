@@ -294,6 +294,27 @@ function createTables() {
         host_id TEXT,
         ended INTEGER DEFAULT 0
       )`
+    },
+    {
+      name: 'command_permissions',
+      sql: `CREATE TABLE IF NOT EXISTS command_permissions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        command_name TEXT NOT NULL,
+        role_id TEXT NOT NULL,
+        UNIQUE(guild_id, command_name, role_id)
+      )`
+    },
+    {
+      name: 'team_members',
+      sql: `CREATE TABLE IF NOT EXISTS team_members (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        role_label TEXT NOT NULL,
+        order_position INTEGER NOT NULL,
+        social_link TEXT
+      )`
     }
   ];
 
@@ -355,6 +376,14 @@ function createTables() {
     {
       name: 'idx_infractions_user',
       sql: `CREATE INDEX IF NOT EXISTS idx_infractions_user ON infractions(user_id, guild_id)`
+    },
+    {
+      name: 'idx_command_permissions_lookup',
+      sql: `CREATE INDEX IF NOT EXISTS idx_command_permissions_lookup ON command_permissions(guild_id, command_name)`
+    },
+    {
+      name: 'idx_team_members_order',
+      sql: `CREATE INDEX IF NOT EXISTS idx_team_members_order ON team_members(guild_id, order_position)`
     }
   ];
 

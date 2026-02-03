@@ -412,3 +412,34 @@ maintenance/
    - **Arguments :** Question, Options (séparées par `|`).
    - **Comportement :** Embed avec liste numérotée (1-10). Ajout automatique et séquentiel des réactions.
    - **Limites :** Max 10 options.
+
+---
+
+## 🔐 Sprint 4.0 : Système de Permissions Dynamique et Présentation Staff
+
+**Objectif :** Remplacer les permissions Discord natives par un système BDD flexible et automatiser la présentation du staff.
+
+### Spécifications Techniques
+
+1. **Base de Données (Schema)**
+   *   **`command_permissions`** : `id`, `guild_id`, `command_name`, `role_id`.
+   *   **`team_members`** : `id`, `guild_id`, `user_id`, `role_label`, `order_position`, `social_link`.
+
+2. **Middleware de Permissions (`interactionCreate`)**
+   *   **Priorité** : Admin (Natif) > Owner > BDD (`command_permissions`) > Défaut (Code).
+   *   **Comportement** : Si une règle existe en BDD pour la commande, l'utilisateur DOIT avoir le rôle. Sinon, fallback sur permission native.
+   *   **Refus** : Message éphémère "⛔ Vous n'avez pas la permission requise (Système Heneria)."
+
+3. **Commande `/perms` (Admin)**
+   *   `add [cmd] [role]` : Autorise un rôle.
+   *   `remove [cmd] [role]` : Retire l'accès.
+   *   `list` : Affiche les configurations.
+   *   `reset` : Remise à zéro.
+
+4. **Commande `/team` (Admin)**
+   *   `add/remove/update` : Gestion des membres (`team_members`).
+   *   `setup` : Crée le message/embed "Notre Équipe".
+   *   `refresh` : Met à jour l'embed existant (sauvegardé dans `settings`).
+   *   **Affichage** : Tri par `order_position`, Embed propre avec Avatar/Pseudo/Rôle.
+
+**Fichiers impactés :** `src/database/db.js`, `src/events/interactionCreate.js`, `src/commands/admin/perms.js`, `src/commands/utils/team.js`.
