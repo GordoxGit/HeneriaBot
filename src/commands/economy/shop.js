@@ -29,7 +29,7 @@ module.exports = {
                 subcommand
                     .setName('remove')
                     .setDescription('Supprimer un article')
-                    .addIntegerOption(option => option.setName('item_id').setDescription('ID de l\'article').setRequired(true)))),
+                    .addIntegerOption(option => option.setName('item_id').setDescription('Numéro de l\'article').setRequired(true)))),
 
   async execute(interaction) {
     const subcommandGroup = interaction.options.getSubcommandGroup();
@@ -80,15 +80,17 @@ module.exports = {
                 });
             }
         } else if (subcommand === 'remove') {
-            const itemId = interaction.options.getInteger('item_id');
-            const item = db.get('SELECT * FROM shop_items WHERE id = ? AND guild_id = ?', [itemId, guildId]);
+            const itemIndex = interaction.options.getInteger('item_id');
+            const items = db.all('SELECT * FROM shop_items WHERE guild_id = ? ORDER BY id ASC', [guildId]);
 
-            if (!item) {
+            if (itemIndex < 1 || itemIndex > items.length) {
                 return interaction.reply({
-                    embeds: [errorEmbed('Article introuvable.')],
+                    embeds: [errorEmbed('Numéro d\'article invalide.')],
                     ephemeral: true
                 });
             }
+
+            const item = items[itemIndex - 1];
 
             try {
                 const deleteItem = db.transaction((id) => {
@@ -100,10 +102,10 @@ module.exports = {
                     db.run('DELETE FROM shop_items WHERE id = ?', [id]);
                 });
 
-                deleteItem(itemId);
+                deleteItem(item.id);
 
                 return interaction.reply({
-                    embeds: [successEmbed(`L'article **${item.name}** (ID: ${itemId}) a été supprimé.`)],
+                    embeds: [successEmbed(`L'article **${item.name}** (Numéro: ${itemIndex}) a été supprimé.`)],
                     ephemeral: true
                 });
             } catch (error) {
@@ -115,7 +117,7 @@ module.exports = {
             }
         }
     } else if (subcommand === 'view') {
-        const items = db.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+        const items = db.all('SELECT * FROM shop_items WHERE guild_id = ? ORDER BY id ASC', [guildId]);
 
         if (items.length === 0) {
             return interaction.reply({
@@ -139,11 +141,12 @@ module.exports = {
                 .setColor(COLORS.PRIMARY);
 
             if (currentItems.length > 0) {
-                const fields = currentItems.map(item => {
+                const fields = currentItems.map((item, index) => {
                     const stockDisplay = item.stock === -1 ? '♾️ Infini' : `📦 ${item.stock}`;
                     const roleDisplay = item.role_id ? `\n🏷️ Donne le rôle: <@&${item.role_id}>` : '';
+                    const visualIndex = start + index + 1;
                     return {
-                        name: `[${item.id}] ${item.name} - ${item.price} ${economyConfig.CURRENCY_SYMBOL}`,
+                        name: `[${visualIndex}] ${item.name} - ${item.price} ${economyConfig.CURRENCY_SYMBOL}`,
                         value: `📝 ${item.description}\n${stockDisplay}${roleDisplay}`
                     };
                 });
