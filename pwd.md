@@ -531,3 +531,24 @@ maintenance/
     *   **Logique** : Vérifie niveau métier et inventaire.
 
 **Fichiers impactés :** `src/jobs/warrior.js`, `src/jobs/explorer.js`, `src/jobs/artisan.js`, `src/commands/economy/craft.js`, `src/database/db.js`.
+
+## 🎲 Sprint 3.X (Addendum) : Casino & Jeux de Hasard
+
+**Objectif :** Implémenter des jeux de hasard pour divertir la communauté et créer des puits de consommation (Money Sinks) pour réguler l'inflation de l'économie. Intégration visuelle du lore Hytale.
+
+### Spécifications Techniques
+
+1.  **Logique Commune (Sécurité)**
+    *   **Validation :** Solde >= mise > 0.
+    *   **Atomicité :** Débit immédiat AVANT le RNG. Crédit UNIQUEMENT si victoire.
+    *   **Logs :** Trace systématique dans `economy_transactions` (Type: 'CASINO_BET', 'CASINO_WIN').
+    *   **Limites :** Plafond de mise (`MAX_BET`) configurable.
+
+2.  **Commandes de Jeu**
+    *   **`/coinflip`** : Pile ou Face (x2). Animation "La pièce tourne...".
+    *   **`/dice`** : Duel de Dés (Joueur vs Bot). Si Joueur > Bot (x2). Si Égalité (Remboursé).
+    *   **`/slots`** : Machine à sous avec symboles Hytale pondérés (Commun à Légendaire).
+        *   **Gains :** x3 (Commun), x10 (Rare), x50 (Légendaire), x1.5 (Paire).
+        *   **Visuel :** Animation de défilement via édition de message.
+
+**Fichiers impactés :** `src/commands/economy/coinflip.js`, `src/commands/economy/dice.js`, `src/commands/economy/slots.js`, `src/utils/emojis.js`, `src/config/economy.js`.
