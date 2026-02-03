@@ -26,11 +26,15 @@ module.exports = {
 
     // 1. Find the item
     let item;
-    // Try as ID first if it looks like a number
+    // Try as Visual Index if it looks like a number
     if (/^\d+$/.test(itemQuery)) {
-        item = db.get('SELECT * FROM shop_items WHERE id = ? AND guild_id = ?', [itemQuery, guildId]);
+        const index = parseInt(itemQuery, 10);
+        const items = db.all('SELECT * FROM shop_items WHERE guild_id = ? ORDER BY id ASC', [guildId]);
+        if (index >= 1 && index <= items.length) {
+            item = items[index - 1];
+        }
     }
-    // If not found or not ID, try as name
+    // If not found (or not a number), try as name
     if (!item) {
         item = db.get('SELECT * FROM shop_items WHERE name = ? AND guild_id = ?', [itemQuery, guildId]);
         // Try partial match if exact match fails? Instructions say "Nom ou ID", implies exact or specific.
