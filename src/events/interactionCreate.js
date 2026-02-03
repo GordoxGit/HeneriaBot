@@ -3,8 +3,9 @@
  * Gère les interactions (commandes slash)
  */
 
-const { Events, PermissionFlagsBits } = require('discord.js');
+const { Events, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const { errorEmbed, successEmbed } = require('../utils/embedBuilder');
+const db = require('../database/db');
 const {
   createTicket,
   claimTicket,
@@ -95,6 +96,31 @@ module.exports = {
     }
 
     try {
+      // Système de Permissions Dynamique (Middleware)
+      // 1. Bypass Administrateur
+      const isAdmin = interaction.member.permissions.has(PermissionFlagsBits.Administrator);
+      const isOwner = interaction.user.id === interaction.guild.ownerId;
+
+      if (!isAdmin && !isOwner) {
+          const commandName = interaction.commandName;
+          const guildId = interaction.guild.id;
+
+          // 2. Vérification BDD
+          const allowedRoles = db.all('SELECT role_id FROM command_permissions WHERE guild_id = ? AND command_name = ?', [guildId, commandName]);
+
+          if (allowedRoles.length > 0) {
+              const memberRoles = interaction.member.roles.cache;
+              const hasPermission = allowedRoles.some(perm => memberRoles.has(perm.role_id));
+
+              if (!hasPermission) {
+                  return interaction.reply({
+                      content: '⛔ Vous n\'avez pas la permission requise (Système Heneria).',
+                      flags: MessageFlags.Ephemeral
+                  });
+              }
+          }
+      }
+
       // Logger l'exécution de la commande
       logger.info(`Utilisateur ${interaction.user.tag} a exécuté la commande /${interaction.commandName}`);
 
