@@ -384,6 +384,18 @@ function createTables() {
         required_job_level INTEGER DEFAULT 1,
         FOREIGN KEY (result_item_id) REFERENCES shop_items(id)
       )`
+    },
+    {
+      name: 'casino_stats',
+      sql: `CREATE TABLE IF NOT EXISTS casino_stats (
+        user_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        game_type TEXT NOT NULL,
+        games_played INTEGER DEFAULT 0,
+        total_wagered INTEGER DEFAULT 0,
+        total_won INTEGER DEFAULT 0,
+        PRIMARY KEY (user_id, guild_id, game_type)
+      )`
     }
   ];
 

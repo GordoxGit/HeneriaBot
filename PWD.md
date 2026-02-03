@@ -27,6 +27,12 @@
    - Intégrer des événements rares (Jackpots/Boss) et des cooldowns dynamiques.
    - Fichiers impactés : `src/jobs/hunter.js`, `src/commands/economy/work.js`, `src/database/db.js`.
 
+6. **Jeux de Casino Interactifs** (NOUVEAU) :
+   - Implémenter Blackjack, Roulette, et Crash.
+   - Système de statistiques de jeu (`casino_stats`).
+   - Gestion de la concurrence et des transactions atomiques.
+   - Fichiers impactés : `src/commands/economy/blackjack.js`, `src/commands/economy/roulette.js`, `src/commands/economy/crash.js`, `src/database/db.js`, `src/utils/casinoUtils.js`.
+
 ## Historique
 - Le système de vote et de modération de base (ban, kick, mute) est en place.
 - La gestion des tickets et des niveaux est fonctionnelle.
@@ -112,3 +118,21 @@ Modification de la table `job_progress` :
 - **Administration XP Métiers (/job admin)** :
   - Gérer l'XP et les niveaux des joueurs manuellement (Ajout, Retrait, Reset).
   - Fichiers impactés : `src/commands/economy/job.js`.
+
+## Spécifications Techniques (Casino)
+
+### Base de Données
+Ajout de la table `casino_stats` :
+- `user_id` (TEXT)
+- `guild_id` (TEXT)
+- `game_type` (TEXT)
+- `games_played` (INTEGER)
+- `total_wagered` (INTEGER)
+- `total_won` (INTEGER)
+- PK: `(user_id, guild_id, game_type)`
+
+### Commandes
+- **/blackjack** : Jeu de cartes contre le croupier (Hit/Stand).
+- **/roulette** : Mises sur couleurs ou nombres.
+- **/crash** : Multiplicateur en temps réel avec cash-out.
+- **/casino stats** : Statistiques globales du joueur.
