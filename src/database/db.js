@@ -315,6 +315,52 @@ function createTables() {
         order_position INTEGER NOT NULL,
         social_link TEXT
       )`
+    },
+    {
+      name: 'wallets',
+      sql: `CREATE TABLE IF NOT EXISTS wallets (
+        user_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        cash INTEGER DEFAULT 0 CHECK(cash >= 0),
+        bank INTEGER DEFAULT 0 CHECK(bank >= 0),
+        last_daily INTEGER,
+        PRIMARY KEY (user_id, guild_id)
+      )`
+    },
+    {
+      name: 'economy_transactions',
+      sql: `CREATE TABLE IF NOT EXISTS economy_transactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        from_user_id TEXT,
+        to_user_id TEXT,
+        guild_id TEXT,
+        amount INTEGER,
+        type TEXT,
+        created_at INTEGER DEFAULT (CAST(strftime('%s', 'now') AS INTEGER))
+      )`
+    },
+    {
+      name: 'shop_items',
+      sql: `CREATE TABLE IF NOT EXISTS shop_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT,
+        name TEXT NOT NULL,
+        description TEXT,
+        price INTEGER,
+        role_id TEXT,
+        stock INTEGER DEFAULT -1
+      )`
+    },
+    {
+      name: 'inventory',
+      sql: `CREATE TABLE IF NOT EXISTS inventory (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT,
+        guild_id TEXT,
+        item_id INTEGER,
+        quantity INTEGER DEFAULT 1,
+        FOREIGN KEY (item_id) REFERENCES shop_items(id)
+      )`
     }
   ];
 
@@ -384,6 +430,22 @@ function createTables() {
     {
       name: 'idx_team_members_order',
       sql: `CREATE INDEX IF NOT EXISTS idx_team_members_order ON team_members(guild_id, order_position)`
+    },
+    {
+      name: 'idx_wallets_guild',
+      sql: `CREATE INDEX IF NOT EXISTS idx_wallets_guild ON wallets(guild_id)`
+    },
+    {
+      name: 'idx_transactions_users',
+      sql: `CREATE INDEX IF NOT EXISTS idx_transactions_users ON economy_transactions(from_user_id, to_user_id)`
+    },
+    {
+      name: 'idx_shop_guild',
+      sql: `CREATE INDEX IF NOT EXISTS idx_shop_guild ON shop_items(guild_id)`
+    },
+    {
+      name: 'idx_inventory_user',
+      sql: `CREATE INDEX IF NOT EXISTS idx_inventory_user ON inventory(user_id, guild_id)`
     }
   ];
 
