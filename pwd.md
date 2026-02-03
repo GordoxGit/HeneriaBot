@@ -509,3 +509,25 @@ maintenance/
    - **Affichage :** La commande `/balance` (déjà existante) devra bien refléter ces changements (Cash baisse, Banque monte).
 
 **Fichiers impactés :** `src/commands/economy/deposit.js`, `src/commands/economy/withdraw.js`.
+
+## 🛠️ Sprint 3.X (Addendum) : Diversification Économie (Jobs & Craft)
+
+**Objectif :** Diversifier l'économie avec des boucles de gameplay PvE, Exploration et Crafting.
+
+### Spécifications Techniques
+
+1.  **Base de Données**
+    *   **Table `recipes`** : `id`, `result_item_id`, `materials` (JSON), `required_job_level`.
+    *   Dépendance : Les items (matériaux et résultats) doivent exister dans `shop_items`.
+
+2.  **Nouveaux Métiers**
+    *   **Guerrier (Warrior)** : PvE, Risque/Récompense. Loot : Cuir, Os, Viande, Pièces d'or.
+    *   **Explorateur (Explorer)** : RNG élevé. Loot : Cartes, Reliques, Coffres, Artefacts.
+    *   **Artisan** : Transformation de ressources via `/craft`.
+
+3.  **Système de Craft (`/craft`)**
+    *   **List** : Affiche les recettes.
+    *   **Make** : Fabrique un objet (Atomicité : Retrait matériaux -> Ajout item -> XP).
+    *   **Logique** : Vérifie niveau métier et inventaire.
+
+**Fichiers impactés :** `src/jobs/warrior.js`, `src/jobs/explorer.js`, `src/jobs/artisan.js`, `src/commands/economy/craft.js`, `src/database/db.js`.
