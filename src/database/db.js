@@ -396,6 +396,27 @@ function createTables() {
         total_won INTEGER DEFAULT 0,
         PRIMARY KEY (user_id, guild_id, game_type)
       )`
+    },
+    {
+      name: 'quiz_questions',
+      sql: `CREATE TABLE IF NOT EXISTS quiz_questions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        question TEXT NOT NULL,
+        answers TEXT NOT NULL,
+        correct_index INTEGER NOT NULL,
+        difficulty TEXT DEFAULT 'Moyen',
+        category TEXT DEFAULT 'Lore'
+      )`
+    },
+    {
+      name: 'quiz_scores',
+      sql: `CREATE TABLE IF NOT EXISTS quiz_scores (
+        user_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        correct_answers INTEGER DEFAULT 0,
+        total_earnings INTEGER DEFAULT 0,
+        PRIMARY KEY (user_id, guild_id)
+      )`
     }
   ];
 

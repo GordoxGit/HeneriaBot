@@ -12,6 +12,7 @@ const loadEvents = require('./handlers/eventHandler');
 const voteHandler = require('./handlers/voteHandler');
 const moderationHandler = require('./handlers/moderationHandler');
 const giveawayHandler = require('./handlers/giveawayHandler');
+const quizLoader = require('./utils/quizLoader');
 const voteWebhookRoutes = require('./api/webhooks/voteWebhook');
 
 // Initialisation du client Discord avec les intents nécessaires
@@ -58,6 +59,9 @@ async function init() {
 
     // Initialisation du système de giveaways
     giveawayHandler.init(client);
+
+    // Initialisation du chargeur de Quiz
+    quizLoader.init(db);
 
     // Initialisation du serveur API (Webhooks)
     const app = express();

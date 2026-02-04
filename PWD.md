@@ -33,6 +33,12 @@
    - Gestion de la concurrence et des transactions atomiques.
    - Fichiers impactés : `src/commands/economy/blackjack.js`, `src/commands/economy/roulette.js`, `src/commands/economy/crash.js`, `src/database/db.js`, `src/utils/casinoUtils.js`.
 
+7. **Quiz Interactif Hytale** (NOUVEAU) :
+   - Engager la communauté autour du Lore de Hytale via un système de Quiz interactif.
+   - Base de connaissances de 50+ questions sur l'univers Hytale.
+   - Système de récompenses et leaderboard.
+   - Fichiers impactés : `src/database/db.js`, `src/commands/fun/quiz.js`, `src/commands/admin/quizadd.js`, `src/data/quizQuestions.json`.
+
 ## Historique
 - Le système de vote et de modération de base (ban, kick, mute) est en place.
 - La gestion des tickets et des niveaux est fonctionnelle.
@@ -136,3 +142,25 @@ Ajout de la table `casino_stats` :
 - **/roulette** : Mises sur couleurs ou nombres.
 - **/crash** : Multiplicateur en temps réel avec cash-out.
 - **/casino stats** : Statistiques globales du joueur.
+
+## Spécifications Techniques (Quiz)
+
+### Base de Données
+Ajout de la table `quiz_questions` :
+- `id` (INTEGER PRIMARY KEY)
+- `question` (TEXT)
+- `answers` (TEXT) - JSON Array
+- `correct_index` (INTEGER)
+- `difficulty` (TEXT)
+- `category` (TEXT)
+
+Ajout de la table `quiz_scores` :
+- `user_id` (TEXT)
+- `guild_id` (TEXT)
+- `correct_answers` (INTEGER)
+- `total_earnings` (INTEGER)
+- PK: `(user_id, guild_id)`
+
+### Commandes
+- **/quiz** : Lance une question aléatoire (Boutons). Gain de monnaie.
+- **/quizadd** : Ajout de question par les admins.
