@@ -552,3 +552,49 @@ maintenance/
         *   **Visuel :** Animation de défilement via édition de message.
 
 **Fichiers impactés :** `src/commands/economy/coinflip.js`, `src/commands/economy/dice.js`, `src/commands/economy/slots.js`, `src/utils/emojis.js`, `src/config/economy.js`.
+
+## 🎲 Sprint 3.X (Addendum) : Mini-jeux Classiques (1v1)
+
+**Objectif :** Implémenter des classiques du jeu de société en 1 contre 1 directement dans Discord, avec gestion de tour par tour et validation d'invitation.
+
+### Spécifications Techniques
+
+1.  **Système d'Invitation (Logique Commune)**
+    *   **Fichier :** `src/utils/gameUtils.js`
+    *   **Phase de "Challenge" :**
+        *   Joueur A lance la commande vers Joueur B.
+        *   Validation : B n'est pas un bot, B n'est pas A.
+        *   Message d'attente : Embed envoyé à B avec boutons [Accepter] et [Refuser].
+        *   Timeout : 60s.
+        *   Démarrage : Si accepté, lance le moteur de jeu.
+
+2.  **Pierre-Papier-Ciseaux (`/rps`)**
+    *   **Fichier :** `src/commands/fun/rps.js`
+    *   **Logique :**
+        *   Phase de choix : 3 boutons (Pierre, Papier, Ciseaux).
+        *   État Caché : Tant que les deux n'ont pas joué, ne pas révéler les choix (ou interactions éphémères).
+        *   Résolution : Comparaison des choix une fois les deux reçus.
+        *   Affichage : Annonce du vainqueur.
+
+3.  **Morpion (`/tictactoe`)**
+    *   **Fichier :** `src/commands/fun/tictactoe.js`
+    *   **Spécifications :**
+        *   Grille 3x3 (Tableau interne).
+        *   Interface : 3 rangées de 3 boutons.
+        *   Labels : Vide (Space), ❌, ⭕.
+        *   Tour par tour : ComponentCollector.
+        *   Victoire : 3 alignés (Horiz, Vert, Diag). Match nul si plein.
+
+4.  **Puissance 4 (`/connect4`)**
+    *   **Fichier :** `src/commands/fun/connect4.js`
+    *   **Spécifications :**
+        *   Grille 7 colonnes x 6 lignes.
+        *   Interface : 1 rangée de boutons (1-7).
+        *   Affichage : Embed avec émojis (🔴, 🟡, ⚫).
+        *   Logique "Gravité" : Le jeton tombe à la position libre la plus basse.
+        *   Victoire : 4 alignés.
+
+5.  **Validation Technique**
+    *   **Anti-Softlock :** Timeout (~2 min) -> Forfait.
+    *   **Concurrency :** Isolation des parties.
+    *   **Réactivité :** Feedback immédiat.
