@@ -417,6 +417,16 @@ function createTables() {
         total_earnings INTEGER DEFAULT 0,
         PRIMARY KEY (user_id, guild_id)
       )`
+    },
+    {
+      name: 'logs_config',
+      sql: `CREATE TABLE IF NOT EXISTS logs_config (
+        guild_id TEXT NOT NULL,
+        event_type TEXT NOT NULL,
+        channel_id TEXT NOT NULL,
+        is_active INTEGER DEFAULT 1,
+        PRIMARY KEY (guild_id, event_type)
+      )`
     }
   ];
 
