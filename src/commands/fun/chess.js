@@ -3,6 +3,7 @@ const { Chess } = require('chess.js');
 const { initiateChallenge } = require('../../utils/gameUtils');
 const { getBoardImageUrl } = require('../../utils/chessRenderer');
 const { createEmbed, errorEmbed, infoEmbed, successEmbed } = require('../../utils/embedBuilder');
+const { getBestMove } = require('../../utils/chessAI');
 
 // Map to store active games
 // Key: userId (for both players), Value: Game Object
@@ -14,8 +15,18 @@ module.exports = {
         .setDescription('Jouer aux échecs')
         .addSubcommand(sub =>
             sub.setName('challenge')
-                .setDescription('Défier un joueur')
-                .addUserOption(option => option.setName('user').setDescription('L\'adversaire').setRequired(true))
+                .setDescription('Défier un joueur ou le bot')
+                .addUserOption(option => option.setName('adversaire').setDescription('L\'adversaire (laisser vide pour jouer contre le Bot)').setRequired(false))
+                .addStringOption(option =>
+                    option.setName('difficulte')
+                        .setDescription('Difficulté du Bot')
+                        .setRequired(false)
+                        .addChoices(
+                            { name: 'Facile (Aléatoire)', value: 'Facile' },
+                            { name: 'Moyen (Profondeur 2)', value: 'Moyen' },
+                            { name: 'Difficile (Profondeur 3)', value: 'Difficile' }
+                        )
+                )
         )
         .addSubcommand(sub =>
             sub.setName('resign')
@@ -31,19 +42,52 @@ module.exports = {
         const userId = interaction.user.id;
 
         if (subcommand === 'challenge') {
-            const opponent = interaction.options.getUser('user');
+            const opponentUser = interaction.options.getUser('adversaire');
+            const difficulty = interaction.options.getString('difficulte') || 'Moyen';
 
-            if (activeChessGames.has(userId) || activeChessGames.has(opponent.id)) {
+            if (activeChessGames.has(userId)) {
                 return interaction.reply({
-                    embeds: [errorEmbed('Vous ou votre adversaire êtes déjà dans une partie.')],
+                    embeds: [errorEmbed('Vous êtes déjà dans une partie.')],
                     flags: MessageFlags.Ephemeral
                 });
             }
 
-            const accepted = await initiateChallenge(interaction, opponent, 'Échecs');
+            if (opponentUser) {
+                // PvP Mode
+                if (opponentUser.id === userId) {
+                    return interaction.reply({
+                        embeds: [errorEmbed('Vous ne pouvez pas jouer contre vous-même.')],
+                        flags: MessageFlags.Ephemeral
+                    });
+                }
+                if (opponentUser.bot) {
+                    return interaction.reply({
+                        embeds: [errorEmbed('Pour jouer contre le bot, n\'indiquez pas d\'adversaire.')],
+                        flags: MessageFlags.Ephemeral
+                    });
+                }
+                if (activeChessGames.has(opponentUser.id)) {
+                    return interaction.reply({
+                        embeds: [errorEmbed('Votre adversaire est déjà dans une partie.')],
+                        flags: MessageFlags.Ephemeral
+                    });
+                }
 
-            if (accepted) {
-                await startGame(interaction, interaction.user, opponent);
+                const accepted = await initiateChallenge(interaction, opponentUser, 'Échecs');
+                if (accepted) {
+                    await startGame(interaction, interaction.user, opponentUser, false, null);
+                }
+            } else {
+                // PvE Mode
+                const botOpponent = {
+                    id: 'bot',
+                    username: `Bot Heneria (${difficulty})`,
+                    discriminator: '0000',
+                    bot: true,
+                    toString: () => `**Bot Heneria (${difficulty})**`
+                };
+
+                await startGame(interaction, interaction.user, botOpponent, true, difficulty);
             }
         }
         else if (subcommand === 'resign') {
@@ -72,11 +116,6 @@ module.exports = {
                 });
             }
 
-            // Propose draw logic could be complex (requires acceptance).
-            // For simplicity and per plan, we might just handle it or skip complex negotiation.
-            // Let's implement a simple "Draw offered" message or handle it inside the game loop buttons.
-            // The plan said "Boutons pour Abandon/Nulle", so the subcommand is secondary.
-            // I'll just say "Utilisez les boutons de la partie pour proposer une nulle."
              return interaction.reply({
                 embeds: [infoEmbed('Utilisez le bouton "Proposer Nulle" sur le message de la partie.')],
                 flags: MessageFlags.Ephemeral
@@ -85,7 +124,7 @@ module.exports = {
     }
 };
 
-async function startGame(interaction, whitePlayer, blackPlayer) {
+async function startGame(interaction, whitePlayer, blackPlayer, isBot = false, difficulty = null) {
     const game = new Chess();
     const gameId = `${whitePlayer.id}-${blackPlayer.id}-${Date.now()}`;
 
@@ -96,11 +135,15 @@ async function startGame(interaction, whitePlayer, blackPlayer) {
         black: blackPlayer,
         message: null,
         collector: null,
-        drawOffered: null // userId of who offered draw
+        drawOffered: null,
+        isBot: isBot,
+        difficulty: difficulty
     };
 
     activeChessGames.set(whitePlayer.id, gameData);
-    activeChessGames.set(blackPlayer.id, gameData);
+    if (!isBot) {
+        activeChessGames.set(blackPlayer.id, gameData);
+    }
 
     const embed = getGameEmbed(gameData);
     const row = getGameComponents(gameData);
@@ -123,12 +166,19 @@ async function startGame(interaction, whitePlayer, blackPlayer) {
     gameData.collector = collector;
 
     collector.on('collect', async i => {
-        // Refresh game data ref in case needed, though object ref is const
         if (!activeChessGames.has(i.user.id)) {
-            return i.reply({ content: 'Cette partie est terminée.', flags: MessageFlags.Ephemeral });
+            // Check if it is the active game's player but game finished?
+            // Usually if not in map, game over or error.
+            return i.reply({ content: 'Cette partie est terminée ou vous n\'y participez pas.', flags: MessageFlags.Ephemeral });
         }
 
-        const isPlayer = i.user.id === whitePlayer.id || i.user.id === blackPlayer.id;
+        // Safety check to ensure they are interacting with THEIR game
+        const userGame = activeChessGames.get(i.user.id);
+        if (userGame.id !== gameId) {
+             return i.reply({ content: 'Ce n\'est pas votre partie.', flags: MessageFlags.Ephemeral });
+        }
+
+        const isPlayer = i.user.id === whitePlayer.id || (isBot ? false : i.user.id === blackPlayer.id);
         if (!isPlayer) {
             return i.reply({ content: 'Vous n\'êtes pas dans cette partie.', flags: MessageFlags.Ephemeral });
         }
@@ -171,41 +221,15 @@ async function startGame(interaction, whitePlayer, blackPlayer) {
                 const moveStr = submitted.fields.getTextInputValue('move_input');
 
                 try {
-                    const move = game.move(moveStr); // Returns null if invalid, or throws? chess.js v1 throws on some, returns null on others?
-                    // v1.0.0 returns null/undefined if invalid? Actually checking docs v1.4.0: .move(san) returns move object or null if invalid?
-                    // Or throws error. "If the move is invalid, .move() will throw an error" (some versions).
-                    // Let's try/catch.
-
+                    const move = game.move(moveStr);
                     if (!move) throw new Error('Coup invalide');
 
                     // Move successful
-                    // Reset draw offer
                     gameData.drawOffered = null;
 
-                    // Check Game Over
+                    // Update Board immediately
                     if (game.isGameOver()) {
-                        let resultText = '';
-                        let winner = null;
-
-                        if (game.isCheckmate()) {
-                            winner = isWhiteTurn ? whitePlayer : blackPlayer;
-                            resultText = `Échec et mat ! ${winner} a gagné !`;
-                        } else if (game.isDraw()) {
-                            resultText = 'Partie nulle !';
-                            if (game.isStalemate()) resultText += ' (Pat)';
-                            else if (game.isThreefoldRepetition()) resultText += ' (Répétition)';
-                            else if (game.isInsufficientMaterial()) resultText += ' (Matériel insuffisant)';
-                            else if (game.isFiftyMoves()) resultText += ' (50 coups)';
-                        }
-
-                        await submitted.update({
-                            content: resultText,
-                            embeds: [getGameEmbed(gameData, resultText)],
-                            components: []
-                        });
-
-                        cleanupGame(whitePlayer.id, blackPlayer.id);
-                        collector.stop();
+                        await handleGameOver(submitted, gameData, isWhiteTurn, whitePlayer, blackPlayer);
                     } else {
                         // Continue game
                         await submitted.update({
@@ -213,9 +237,18 @@ async function startGame(interaction, whitePlayer, blackPlayer) {
                             embeds: [getGameEmbed(gameData)],
                             components: [getGameComponents(gameData)]
                         });
+
+                        // Trigger Bot if needed
+                        if (isBot && !game.isGameOver()) {
+                            // Check if it's bot's turn (Bot is Black usually, so if turn is 'b')
+                            if (game.turn() === 'b') {
+                                playBotTurn(gameData);
+                            }
+                        }
                     }
 
                 } catch (e) {
+                    // console.error(e);
                     await submitted.reply({ content: `Coup invalide : ${moveStr}. Vérifiez la notation.`, flags: MessageFlags.Ephemeral });
                 }
 
@@ -237,6 +270,10 @@ async function startGame(interaction, whitePlayer, blackPlayer) {
              collector.stop();
 
         } else if (i.customId === 'chess_draw') {
+             if (isBot) {
+                  return i.reply({ content: 'Le bot refuse toujours la nulle (il est sans pitié).', flags: MessageFlags.Ephemeral });
+             }
+
              // If already offered by opponent, accept it
              if (gameData.drawOffered && gameData.drawOffered !== i.user.id) {
                  // Accept draw
@@ -258,6 +295,92 @@ async function startGame(interaction, whitePlayer, blackPlayer) {
     collector.on('end', () => {
         cleanupGame(whitePlayer.id, blackPlayer.id);
     });
+}
+
+async function playBotTurn(gameData) {
+    // Artificial delay
+    // Edit message to say "Bot reflecting..."
+    try {
+        /* Optional: Show bot is thinking
+        await gameData.message.edit({
+             embeds: [getGameEmbed(gameData).setFooter({ text: 'Le Bot réfléchit...' })]
+        });
+        */
+
+        // Delay 1s
+        await new Promise(r => setTimeout(r, 1000));
+
+        const moveStr = getBestMove(gameData.game, gameData.difficulty);
+
+        if (moveStr) {
+            gameData.game.move(moveStr);
+
+            const isWhiteTurn = gameData.game.turn() === 'w'; // Bot just played, so now it's White's turn?
+            // Wait, getBestMove returns move. We played it.
+            // If Bot was Black, now turn is White.
+
+            if (gameData.game.isGameOver()) {
+                // Determine winner
+                 let resultText = '';
+                 let winner = null;
+
+                 const botPlayer = gameData.black; // Bot
+                 const humanPlayer = gameData.white;
+
+                 if (gameData.game.isCheckmate()) {
+                     // Who moved? Bot. So Bot wins.
+                     winner = botPlayer;
+                     resultText = `Échec et mat ! ${winner} a gagné !`;
+                 } else if (gameData.game.isDraw()) {
+                     resultText = 'Partie nulle !';
+                     if (gameData.game.isStalemate()) resultText += ' (Pat)';
+                     else resultText += ' (Égalité)';
+                 }
+
+                 await gameData.message.edit({
+                     content: resultText,
+                     embeds: [getGameEmbed(gameData, resultText)],
+                     components: []
+                 });
+
+                 if (gameData.collector) gameData.collector.stop();
+                 cleanupGame(humanPlayer.id, botPlayer.id);
+            } else {
+                await gameData.message.edit({
+                    content: `Le Bot a joué **${moveStr}**. A vous !`,
+                    embeds: [getGameEmbed(gameData)],
+                    components: [getGameComponents(gameData)]
+                });
+            }
+        }
+    } catch (e) {
+        console.error("Bot Error:", e);
+    }
+}
+
+async function handleGameOver(interaction, gameData, isWhiteTurn, whitePlayer, blackPlayer) {
+    let resultText = '';
+    let winner = null;
+
+    if (gameData.game.isCheckmate()) {
+        winner = isWhiteTurn ? whitePlayer : blackPlayer;
+        resultText = `Échec et mat ! ${winner} a gagné !`;
+    } else if (gameData.game.isDraw()) {
+        resultText = 'Partie nulle !';
+        if (gameData.game.isStalemate()) resultText += ' (Pat)';
+        else if (gameData.game.isThreefoldRepetition()) resultText += ' (Répétition)';
+        else if (gameData.game.isInsufficientMaterial()) resultText += ' (Matériel insuffisant)';
+        else if (gameData.game.isFiftyMoves()) resultText += ' (50 coups)';
+    }
+
+    await interaction.update({
+        content: resultText,
+        embeds: [getGameEmbed(gameData, resultText)],
+        components: []
+    });
+
+    if (gameData.collector) gameData.collector.stop();
+    cleanupGame(whitePlayer.id, blackPlayer.id);
 }
 
 function getGameEmbed(gameData, resultText = null) {
@@ -297,8 +420,8 @@ function getGameComponents(gameData) {
 }
 
 function cleanupGame(id1, id2) {
-    activeChessGames.delete(id1);
-    activeChessGames.delete(id2);
+    if (id1) activeChessGames.delete(id1);
+    if (id2 && id2 !== 'bot') activeChessGames.delete(id2);
 }
 
 // Helper to manually end game from subcommand
