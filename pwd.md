@@ -598,3 +598,29 @@ maintenance/
     *   **Anti-Softlock :** Timeout (~2 min) -> Forfait.
     *   **Concurrency :** Isolation des parties.
     *   **Réactivité :** Feedback immédiat.
+
+## 📝 Sprint 3.X (Addendum) : Logs Centralisés & Configuration
+
+**Objectif :** Fournir une traçabilité complète des actions sur le serveur via des salons de logs configurables.
+
+### Spécifications Techniques
+
+1.  **Base de Données (Schema)**
+    *   Table `logs_config` : `guild_id`, `event_type`, `channel_id`, `is_active`.
+    *   Types d'événements : 'MESSAGES', 'MEMBERS', 'MODERATION', 'VOICE'.
+
+2.  **Configuration (`/logconfig`)**
+    *   **set [type] [salon]** : Définit le salon de destination.
+    *   **toggle [type]** : Active/Désactive le log.
+    *   **view** : Affiche la configuration actuelle.
+
+3.  **Logs Messages**
+    *   **Suppression** : Contenu, Auteur, Salon. Gestion des partiels et pièces jointes.
+    *   **Édition** : Diff Avant/Après. Ignorer les changements de liens (embeds).
+
+4.  **Logs Membres & Modération**
+    *   **Arrivée** : Compte Age (Anti-Alt).
+    *   **Départ** : Rôles perdus.
+    *   **Ban** : Corrélation avec Audit Log pour identifier le modérateur.
+
+**Fichiers impactés :** `src/database/db.js`, `src/commands/admin/logconfig.js`, `src/events/logs/messageLogs.js`, `src/events/logs/memberLogs.js`.
