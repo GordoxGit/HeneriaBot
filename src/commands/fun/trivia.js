@@ -2,7 +2,51 @@ const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, Compo
 const db = require('../../database/db');
 const { infoEmbed, errorEmbed, successEmbed } = require('../../utils/embedBuilder');
 const emojis = require('../../utils/emojis');
-const questions = require('../../data/triviaQuestions.json');
+const fs = require('fs');
+const path = require('path');
+
+// Fallback questions in case the JSON file is missing or empty
+const fallbackQuestions = [
+    {
+        question: "Quelle est la capitale de la France ?",
+        answers: ["Lyon", "Marseille", "Paris", "Bordeaux"],
+        correct_index: 2,
+        difficulty: "Facile",
+        category: "Géographie"
+    },
+    {
+        question: "Quel est le plus grand océan du monde ?",
+        answers: ["Atlantique", "Indien", "Arctique", "Pacifique"],
+        correct_index: 3,
+        difficulty: "Facile",
+        category: "Géographie"
+    },
+    {
+        question: "Qui a peint la Joconde ?",
+        answers: ["Michel-Ange", "Léonard de Vinci", "Raphaël", "Donatello"],
+        correct_index: 1,
+        difficulty: "Moyen",
+        category: "Art"
+    }
+];
+
+// Safe loading of questions
+let questions = [];
+const questionsPath = path.resolve(__dirname, '../../data/triviaQuestions.json');
+
+try {
+    if (fs.existsSync(questionsPath)) {
+        questions = require(questionsPath);
+    }
+} catch (error) {
+    console.error('Erreur lors du chargement des questions trivia:', error);
+}
+
+// Use fallback if questions is empty or not an array
+if (!Array.isArray(questions) || questions.length === 0) {
+    console.warn('Utilisation des questions de secours pour le Trivia.');
+    questions = fallbackQuestions;
+}
 
 // Set to prevent spamming multiple trivias at once per user
 const activeTrivia = new Set();
@@ -28,9 +72,22 @@ module.exports = {
             });
         }
 
+        if (!questions || !Array.isArray(questions) || questions.length === 0) {
+            return interaction.reply({
+                content: "❌ Aucune question disponible pour le moment.",
+                flags: MessageFlags.Ephemeral
+            });
+        }
+
         try {
             // Pick a random question
             const questionData = questions[Math.floor(Math.random() * questions.length)];
+
+            // Safety check for question data integrity
+            if (!questionData || !questionData.answers || !Array.isArray(questionData.answers)) {
+                throw new Error("Données de question invalides.");
+            }
+
             const answers = questionData.answers;
 
             // Mark as active
