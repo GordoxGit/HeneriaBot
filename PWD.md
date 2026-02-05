@@ -39,6 +39,17 @@
    - Système de récompenses et leaderboard.
    - Fichiers impactés : `src/database/db.js`, `src/commands/fun/quiz.js`, `src/commands/admin/quizadd.js`, `src/data/quizQuestions.json`.
 
+8. **Moteur d'Échecs** (NOUVEAU) :
+   - Implémentation complète du jeu d'échecs (1v1) avec validation des coups.
+   - Rendu visuel du plateau via API externe.
+   - Système d'invitation et persistance en mémoire de l'état du jeu.
+   - Fichiers impactés : `src/commands/fun/chess.js`, `src/utils/chessRenderer.js`.
+
+9. **Culture Générale** (NOUVEAU) :
+   - Système de questions/réponses de culture générale (distinct du quiz Hytale).
+   - Source de données locale (JSON) pour garantir la qualité et la langue (FR).
+   - Fichiers impactés : `src/commands/fun/trivia.js`, `src/data/triviaQuestions.json`.
+
 ## Historique
 - Le système de vote et de modération de base (ban, kick, mute) est en place.
 - La gestion des tickets et des niveaux est fonctionnelle.
@@ -164,3 +175,25 @@ Ajout de la table `quiz_scores` :
 ### Commandes
 - **/quiz** : Lance une question aléatoire (Boutons). Gain de monnaie.
 - **/quizadd** : Ajout de question par les admins.
+
+## Spécifications Techniques (Échecs)
+
+### Architecture
+- **Moteur** : Utilisation de la librairie `chess.js` pour la logique de jeu (validation, échec, mat).
+- **Rendu** : Génération d'image via API (ex: chess.com/dynboard).
+- **État** : Stockage en mémoire (`Map`) des parties en cours.
+- **Interaction** :
+  - Invitation via `initiateChallenge`.
+  - Coups joués via Modale (Notation Algébrique).
+  - Boutons pour Abandon/Nulle.
+
+## Spécifications Techniques (Trivia)
+
+### Données
+- **Source** : `src/data/triviaQuestions.json` contenant 50+ questions FR.
+- **Structure** : `{ question, answers, correct_index, difficulty, category }`.
+
+### Commande (/trivia)
+- Sélection aléatoire d'une question.
+- Affichage via Embed + Boutons.
+- Récompense monétaire selon la difficulté.
