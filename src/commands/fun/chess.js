@@ -38,6 +38,7 @@ module.exports = {
         ),
 
     async execute(interaction) {
+        await interaction.deferReply();
         const subcommand = interaction.options.getSubcommand();
         const userId = interaction.user.id;
 
@@ -46,30 +47,30 @@ module.exports = {
             const difficulty = interaction.options.getString('difficulte') || 'Moyen';
 
             if (activeChessGames.has(userId)) {
-                return interaction.reply({
+                return interaction.editReply({
                     embeds: [errorEmbed('Vous êtes déjà dans une partie.')],
-                    flags: MessageFlags.Ephemeral
+                    components: []
                 });
             }
 
             if (opponentUser) {
                 // PvP Mode
                 if (opponentUser.id === userId) {
-                    return interaction.reply({
+                    return interaction.editReply({
                         embeds: [errorEmbed('Vous ne pouvez pas jouer contre vous-même.')],
-                        flags: MessageFlags.Ephemeral
+                        components: []
                     });
                 }
                 if (opponentUser.bot) {
-                    return interaction.reply({
+                    return interaction.editReply({
                         embeds: [errorEmbed('Pour jouer contre le bot, n\'indiquez pas d\'adversaire.')],
-                        flags: MessageFlags.Ephemeral
+                        components: []
                     });
                 }
                 if (activeChessGames.has(opponentUser.id)) {
-                    return interaction.reply({
+                    return interaction.editReply({
                         embeds: [errorEmbed('Votre adversaire est déjà dans une partie.')],
-                        flags: MessageFlags.Ephemeral
+                        components: []
                     });
                 }
 
@@ -93,9 +94,9 @@ module.exports = {
         else if (subcommand === 'resign') {
             const gameData = activeChessGames.get(userId);
             if (!gameData) {
-                return interaction.reply({
+                return interaction.editReply({
                     embeds: [errorEmbed('Vous n\'avez pas de partie en cours.')],
-                    flags: MessageFlags.Ephemeral
+                    components: []
                 });
             }
 
@@ -105,20 +106,20 @@ module.exports = {
 
             await endGame(gameData, `${interaction.user} a abandonné. ${winner} gagne !`, winner);
 
-            interaction.reply({ content: 'Vous avez abandonné la partie.', flags: MessageFlags.Ephemeral });
+            interaction.editReply({ content: 'Vous avez abandonné la partie.', components: [] });
         }
         else if (subcommand === 'draw') {
              const gameData = activeChessGames.get(userId);
             if (!gameData) {
-                return interaction.reply({
+                return interaction.editReply({
                     embeds: [errorEmbed('Vous n\'avez pas de partie en cours.')],
-                    flags: MessageFlags.Ephemeral
+                    components: []
                 });
             }
 
-             return interaction.reply({
+             return interaction.editReply({
                 embeds: [infoEmbed('Utilisez le bouton "Proposer Nulle" sur le message de la partie.')],
-                flags: MessageFlags.Ephemeral
+                components: []
             });
         }
     }
@@ -148,11 +149,10 @@ async function startGame(interaction, whitePlayer, blackPlayer, isBot = false, d
     const embed = getGameEmbed(gameData);
     const row = getGameComponents(gameData);
 
-    const message = await interaction.followUp({
+    const message = await interaction.editReply({
         content: `La partie commence ! ${whitePlayer} (Blancs) vs ${blackPlayer} (Noirs)`,
         embeds: [embed],
-        components: [row],
-        fetchReply: true
+        components: [row]
     });
 
     gameData.message = message;
