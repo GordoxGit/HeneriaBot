@@ -10,18 +10,34 @@ const { createEmbed } = require('./embedBuilder');
  */
 async function initiateChallenge(interaction, opponent, gameName) {
     if (opponent.bot) {
-        await interaction.reply({
-            content: 'Vous ne pouvez pas jouer contre un bot !',
-            flags: MessageFlags.Ephemeral
-        });
+        if (interaction.deferred || interaction.replied) {
+            await interaction.editReply({
+                content: 'Vous ne pouvez pas jouer contre un bot !',
+                embeds: [],
+                components: []
+            });
+        } else {
+            await interaction.reply({
+                content: 'Vous ne pouvez pas jouer contre un bot !',
+                flags: MessageFlags.Ephemeral
+            });
+        }
         return false;
     }
 
     if (opponent.id === interaction.user.id) {
-        await interaction.reply({
-            content: 'Vous ne pouvez pas jouer contre vous-même !',
-            flags: MessageFlags.Ephemeral
-        });
+        if (interaction.deferred || interaction.replied) {
+            await interaction.editReply({
+                content: 'Vous ne pouvez pas jouer contre vous-même !',
+                embeds: [],
+                components: []
+            });
+        } else {
+            await interaction.reply({
+                content: 'Vous ne pouvez pas jouer contre vous-même !',
+                flags: MessageFlags.Ephemeral
+            });
+        }
         return false;
     }
 
@@ -42,12 +58,21 @@ async function initiateChallenge(interaction, opponent, gameName) {
                 .setStyle(ButtonStyle.Danger)
         );
 
-    const message = await interaction.reply({
-        content: `${opponent}`,
-        embeds: [embed],
-        components: [row],
-        fetchReply: true
-    });
+    let message;
+    if (interaction.deferred || interaction.replied) {
+        message = await interaction.editReply({
+            content: `${opponent}`,
+            embeds: [embed],
+            components: [row]
+        });
+    } else {
+        message = await interaction.reply({
+            content: `${opponent}`,
+            embeds: [embed],
+            components: [row],
+            fetchReply: true
+        });
+    }
 
     try {
         const confirmation = await message.awaitMessageComponent({
