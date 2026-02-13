@@ -1,13 +1,27 @@
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, ComponentType, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ComponentType, MessageFlags } = require('discord.js');
 const { Chess } = require('chess.js');
 const { initiateChallenge } = require('../../utils/gameUtils');
 const { getBoardImageUrl } = require('../../utils/chessRenderer');
-const { createEmbed, errorEmbed, infoEmbed, successEmbed } = require('../../utils/embedBuilder');
+const { createEmbed, errorEmbed, infoEmbed } = require('../../utils/embedBuilder');
 const { getBestMove } = require('../../utils/chessAI');
 
 // Map to store active games
 // Key: userId (for both players), Value: Game Object
 const activeChessGames = new Map();
+
+const PIECE_NAMES = {
+    p: 'Pion',
+    n: 'Cavalier',
+    b: 'Fou',
+    r: 'Tour',
+    q: 'Dame',
+    k: 'Roi'
+};
+
+const PIECE_EMOJIS = {
+    w: { p: '♙', n: '♘', b: '♗', r: '♖', q: '♕', k: '♔' },
+    b: { p: '♟', n: '♞', b: '♝', r: '♜', q: '♛', k: '♚' }
+};
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -167,12 +181,9 @@ async function startGame(interaction, whitePlayer, blackPlayer, isBot = false, d
 
     collector.on('collect', async i => {
         if (!activeChessGames.has(i.user.id)) {
-            // Check if it is the active game's player but game finished?
-            // Usually if not in map, game over or error.
             return i.reply({ content: 'Cette partie est terminée ou vous n\'y participez pas.', flags: MessageFlags.Ephemeral });
         }
 
-        // Safety check to ensure they are interacting with THEIR game
         const userGame = activeChessGames.get(i.user.id);
         if (userGame.id !== gameId) {
              return i.reply({ content: 'Ce n\'est pas votre partie.', flags: MessageFlags.Ephemeral });
@@ -184,7 +195,6 @@ async function startGame(interaction, whitePlayer, blackPlayer, isBot = false, d
         }
 
         if (i.customId === 'chess_move') {
-            // Check turn
             const turnColor = game.turn(); // 'w' or 'b'
             const isWhiteTurn = turnColor === 'w';
             const playerTurnId = isWhiteTurn ? whitePlayer.id : blackPlayer.id;
@@ -193,68 +203,103 @@ async function startGame(interaction, whitePlayer, blackPlayer, isBot = false, d
                 return i.reply({ content: 'Ce n\'est pas votre tour !', flags: MessageFlags.Ephemeral });
             }
 
-            // Show Modal
-            const modal = new ModalBuilder()
-                .setCustomId(`chess_modal_${gameId}`)
-                .setTitle('Jouer un coup');
+            // --- New Interactive Flow ---
 
-            const moveInput = new TextInputBuilder()
-                .setCustomId('move_input')
-                .setLabel("Notation (ex: e4, Nf3, O-O)")
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true)
-                .setMinLength(2)
-                .setMaxLength(6);
+            // Step 1: Generate Piece Selection Menu
+            const pieceMenuRow = getPieceMenu(game, turnColor);
 
-            const firstActionRow = new ActionRowBuilder().addComponents(moveInput);
-            modal.addComponents(firstActionRow);
+            if (!pieceMenuRow) {
+                return i.reply({ content: 'Aucun coup légal disponible (Mat ou Pat ?)', flags: MessageFlags.Ephemeral });
+            }
 
-            await i.showModal(modal);
+            // Send Ephemeral Reply
+            const ephemeralMsg = await i.reply({
+                content: 'Sélectionnez une pièce à déplacer :',
+                components: [pieceMenuRow],
+                flags: MessageFlags.Ephemeral,
+                fetchReply: true
+            });
 
-            // Await submission
-            try {
-                const submitted = await i.awaitModalSubmit({
-                    time: 60000,
-                    filter: (submission) => submission.customId === `chess_modal_${gameId}`
-                });
+            // Create Nested Collector for the Ephemeral Interaction
+            const nestedCollector = ephemeralMsg.createMessageComponentCollector({
+                time: 60000 // 1 minute to make a move
+            });
 
-                const moveStr = submitted.fields.getTextInputValue('move_input');
-
-                try {
-                    const move = game.move(moveStr);
-                    if (!move) throw new Error('Coup invalide');
-
-                    // Move successful
-                    gameData.drawOffered = null;
-
-                    // Update Board immediately
-                    if (game.isGameOver()) {
-                        await handleGameOver(submitted, gameData, isWhiteTurn, whitePlayer, blackPlayer);
-                    } else {
-                        // Continue game
-                        await submitted.update({
-                            content: `Coup joué : **${move.san}**. Au tour de ${isWhiteTurn ? blackPlayer : whitePlayer}.`,
-                            embeds: [getGameEmbed(gameData)],
-                            components: [getGameComponents(gameData)]
-                        });
-
-                        // Trigger Bot if needed
-                        if (isBot && !game.isGameOver()) {
-                            // Check if it's bot's turn (Bot is Black usually, so if turn is 'b')
-                            if (game.turn() === 'b') {
-                                playBotTurn(gameData);
-                            }
-                        }
-                    }
-
-                } catch (e) {
-                    // console.error(e);
-                    await submitted.reply({ content: `Coup invalide : ${moveStr}. Vérifiez la notation.`, flags: MessageFlags.Ephemeral });
+            nestedCollector.on('collect', async nestedI => {
+                // Verify game is still active
+                if (!activeChessGames.has(i.user.id) || activeChessGames.get(i.user.id).id !== gameId) {
+                    return nestedI.reply({ content: 'La partie est terminée.', flags: MessageFlags.Ephemeral });
                 }
 
-            } catch (err) {
-                 // Modal timed out or error
-            }
+                try {
+                    if (nestedI.customId === 'chess_sel_piece') {
+                        // Step 2: Show Destination Menu
+                        const fromSquare = nestedI.values[0].replace('piece_', '');
+                        const destMenuRow = getDestinationMenu(game, fromSquare);
+                        const backButtonRow = new ActionRowBuilder().addComponents(
+                            new ButtonBuilder()
+                                .setCustomId('chess_back_piece')
+                                .setLabel('Retour (Changer de pièce)')
+                                .setStyle(ButtonStyle.Secondary)
+                        );
+
+                        await nestedI.update({
+                            content: `Vous avez sélectionné : **${fromSquare}**. Où voulez-vous aller ?`,
+                            components: [destMenuRow, backButtonRow]
+                        });
+                    }
+                    else if (nestedI.customId === 'chess_sel_dest') {
+                        // Execution: Move Piece
+                        const [from, to] = nestedI.values[0].replace('move_', '').split('_');
+
+                        try {
+                            const move = game.move({ from, to, promotion: 'q' }); // Auto-Queen
+                            if (!move) throw new Error('Coup invalide');
+
+                            // Success
+                            gameData.drawOffered = null;
+
+                            // Update Ephemeral to Success
+                            await nestedI.update({
+                                content: `Coup joué : **${move.san}** !`,
+                                components: []
+                            });
+                            nestedCollector.stop(); // Stop ephemeral collector
+
+                            // Update Public Board
+                            if (game.isGameOver()) {
+                                await handleGameOver(gameData.message, gameData, isWhiteTurn, whitePlayer, blackPlayer);
+                            } else {
+                                await gameData.message.edit({
+                                    content: `Coup joué : **${move.san}**. Au tour de ${isWhiteTurn ? blackPlayer : whitePlayer}.`,
+                                    embeds: [getGameEmbed(gameData)],
+                                    components: [getGameComponents(gameData)]
+                                });
+
+                                // Trigger Bot if needed
+                                if (isBot && !game.isGameOver()) {
+                                    if (game.turn() === 'b') {
+                                        playBotTurn(gameData);
+                                    }
+                                }
+                            }
+
+                        } catch (e) {
+                            await nestedI.reply({ content: `Erreur : ${e.message}`, flags: MessageFlags.Ephemeral });
+                        }
+                    }
+                    else if (nestedI.customId === 'chess_back_piece') {
+                        // Go Back to Step 1
+                        const backPieceMenuRow = getPieceMenu(game, turnColor);
+                        await nestedI.update({
+                            content: 'Sélectionnez une pièce à déplacer :',
+                            components: [backPieceMenuRow]
+                        });
+                    }
+                } catch (err) {
+                    console.error("Chess Ephemeral Error:", err);
+                }
+            });
 
         } else if (i.customId === 'chess_resign') {
              const isWhite = i.user.id === whitePlayer.id;
@@ -274,9 +319,7 @@ async function startGame(interaction, whitePlayer, blackPlayer, isBot = false, d
                   return i.reply({ content: 'Le bot refuse toujours la nulle (il est sans pitié).', flags: MessageFlags.Ephemeral });
              }
 
-             // If already offered by opponent, accept it
              if (gameData.drawOffered && gameData.drawOffered !== i.user.id) {
-                 // Accept draw
                  await i.update({
                      content: `Partie nulle par accord mutuel !`,
                      embeds: [getGameEmbed(gameData, "Nulle par accord")],
@@ -285,7 +328,6 @@ async function startGame(interaction, whitePlayer, blackPlayer, isBot = false, d
                  cleanupGame(whitePlayer.id, blackPlayer.id);
                  collector.stop();
              } else {
-                 // Offer draw
                  gameData.drawOffered = i.user.id;
                  await i.reply({ content: `${i.user} propose une nulle. L'adversaire doit cliquer sur "Proposer Nulle" pour accepter.`, flags: MessageFlags.Ephemeral });
              }
@@ -297,17 +339,97 @@ async function startGame(interaction, whitePlayer, blackPlayer, isBot = false, d
     });
 }
 
-async function playBotTurn(gameData) {
-    // Artificial delay
-    // Edit message to say "Bot reflecting..."
-    try {
-        /* Optional: Show bot is thinking
-        await gameData.message.edit({
-             embeds: [getGameEmbed(gameData).setFooter({ text: 'Le Bot réfléchit...' })]
-        });
-        */
+function getPieceMenu(game, color) {
+    const moves = game.moves({ verbose: true });
+    // Filter moves for current turn (should be handled by game.moves(), but 'color' is for emoji)
 
-        // Delay 1s
+    // Group by 'from' square
+    const piecesMap = new Map();
+    moves.forEach(m => {
+        if (!piecesMap.has(m.from)) {
+            piecesMap.set(m.from, {
+                piece: m.piece,
+                color: m.color,
+                san: m.san, // not used here directly but useful
+                square: m.from
+            });
+        }
+    });
+
+    if (piecesMap.size === 0) return null;
+
+    const options = [];
+    for (const [square, data] of piecesMap) {
+        const pieceName = PIECE_NAMES[data.piece] || 'Pièce';
+        const emoji = PIECE_EMOJIS[data.color][data.piece] || '♟️';
+
+        options.push(
+            new StringSelectMenuOptionBuilder()
+                .setLabel(`${emoji} ${pieceName} en ${square.toUpperCase()}`)
+                .setValue(`piece_${square}`)
+        );
+    }
+
+    // Sort options alphabetically by square for consistency
+    options.sort((a, b) => a.data.label.localeCompare(b.data.label));
+
+    // Split into chunks if > 25 (max options for SelectMenu)
+    // Assuming standard chess, max legal pieces to move is 16. Usually fine.
+    // If somehow > 25, we might need multiple menus, but standard chess max pieces is 16.
+
+    const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId('chess_sel_piece')
+        .setPlaceholder('Choisissez une pièce')
+        .addOptions(options);
+
+    return new ActionRowBuilder().addComponents(selectMenu);
+}
+
+function getDestinationMenu(game, fromSquare) {
+    const moves = game.moves({ verbose: true });
+    const pieceMoves = moves.filter(m => m.from === fromSquare);
+
+    if (pieceMoves.length === 0) return null;
+
+    const options = [];
+    for (const m of pieceMoves) {
+        let label = `Aller en ${m.to.toUpperCase()}`;
+        if (m.captured) {
+            label += ` (Capture)`; // Maybe add captured piece info if possible?
+        }
+        if (m.promotion) {
+            label += ` (Promotion Dame)`;
+        }
+        if (m.san.includes('#')) {
+            label += ` (Mat)`;
+        } else if (m.san.includes('+')) {
+            label += ` (Échec)`;
+        }
+
+        options.push(
+            new StringSelectMenuOptionBuilder()
+                .setLabel(label)
+                .setValue(`move_${m.from}_${m.to}`)
+        );
+    }
+
+    // Limit to 25 options (Standard chess max moves for a piece is rarely > 25. Queen max is 27. Should handle pagination if > 25?)
+    // A Queen in center can have 27 moves.
+    // If > 25, slice it for now. UX tradeoff.
+    if (options.length > 25) {
+        options.length = 25;
+    }
+
+    const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId('chess_sel_dest')
+        .setPlaceholder(`Destinations pour ${fromSquare.toUpperCase()}`)
+        .addOptions(options);
+
+    return new ActionRowBuilder().addComponents(selectMenu);
+}
+
+async function playBotTurn(gameData) {
+    try {
         await new Promise(r => setTimeout(r, 1000));
 
         const moveStr = getBestMove(gameData.game, gameData.difficulty);
@@ -315,20 +437,14 @@ async function playBotTurn(gameData) {
         if (moveStr) {
             gameData.game.move(moveStr);
 
-            const isWhiteTurn = gameData.game.turn() === 'w'; // Bot just played, so now it's White's turn?
-            // Wait, getBestMove returns move. We played it.
-            // If Bot was Black, now turn is White.
-
             if (gameData.game.isGameOver()) {
-                // Determine winner
                  let resultText = '';
                  let winner = null;
 
-                 const botPlayer = gameData.black; // Bot
+                 const botPlayer = gameData.black;
                  const humanPlayer = gameData.white;
 
                  if (gameData.game.isCheckmate()) {
-                     // Who moved? Bot. So Bot wins.
                      winner = botPlayer;
                      resultText = `Échec et mat ! ${winner} a gagné !`;
                  } else if (gameData.game.isDraw()) {
@@ -358,7 +474,7 @@ async function playBotTurn(gameData) {
     }
 }
 
-async function handleGameOver(interaction, gameData, isWhiteTurn, whitePlayer, blackPlayer) {
+async function handleGameOver(message, gameData, isWhiteTurn, whitePlayer, blackPlayer) {
     let resultText = '';
     let winner = null;
 
@@ -373,11 +489,26 @@ async function handleGameOver(interaction, gameData, isWhiteTurn, whitePlayer, b
         else if (gameData.game.isFiftyMoves()) resultText += ' (50 coups)';
     }
 
-    await interaction.update({
-        content: resultText,
-        embeds: [getGameEmbed(gameData, resultText)],
-        components: []
-    });
+    try {
+        // message is gameData.message (passed as arg 'interaction' in original code but really message object for update)
+        // Wait, `handleGameOver` was called with `submitted` (interaction) in original code.
+        // Here I'm calling it with `gameData.message` in one place?
+        // Let's check call site: `await handleGameOver(gameData.message, ...)`
+        // `gameData.message` is a Message object. It has .edit(), not .update().
+        // If I pass interaction (like `nestedI`), I can use .update().
+        // But the main board update usually happens via `.edit()` on the stored message unless we are replying to an interaction.
+        // In `dest_select`, I already updated `nestedI` (ephemeral) to success.
+        // Now I need to update the public board.
+        // So `handleGameOver` should use `gameData.message.edit()`.
+
+        await gameData.message.edit({
+            content: resultText,
+            embeds: [getGameEmbed(gameData, resultText)],
+            components: []
+        });
+    } catch(e) {
+        console.error("Game Over Error:", e);
+    }
 
     if (gameData.collector) gameData.collector.stop();
     cleanupGame(whitePlayer.id, blackPlayer.id);
@@ -424,7 +555,6 @@ function cleanupGame(id1, id2) {
     if (id2 && id2 !== 'bot') activeChessGames.delete(id2);
 }
 
-// Helper to manually end game from subcommand
 async function endGame(gameData, message, winner) {
     if (gameData.message) {
         try {
